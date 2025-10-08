@@ -11,6 +11,7 @@ wheels/
 
 #others
 exd.md
+.vscode/mcp.json
 docs/
 
 #env
