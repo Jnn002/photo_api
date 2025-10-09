@@ -37,16 +37,14 @@ from app.users.models import (  # noqa: E402, F401
     User,
     UserRole,
 )
-
-# TODO: Uncomment as you create these models
-# from app.catalog.models import Item, Package, PackageItem, Room  # noqa: E402, F401
-# from app.sessions.models import (  # noqa: E402, F401
-#     Session,
-#     SessionDetail,
-#     SessionPayment,
-#     SessionPhotographer,
-#     SessionStatusHistory,
-# )
+from app.catalog.models import Item, Package, PackageItem, Room  # noqa: E402, F401
+from app.sessions.models import (  # noqa: E402, F401
+    Session,
+    SessionDetail,
+    SessionPayment,
+    SessionPhotographer,
+    SessionStatusHistory,
+)
 
 # Set target metadata for autogenerate support
 target_metadata = SQLModel.metadata
