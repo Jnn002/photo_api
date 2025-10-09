@@ -6,8 +6,7 @@ This module provides async database connectivity using SQLModel and SQLAlchemy.
 
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -24,7 +23,7 @@ async_engine: AsyncEngine = create_async_engine(
 )
 
 # Create async session maker
-async_session_maker = sessionmaker(
+async_session_maker = async_sessionmaker(
     bind=async_engine,
     class_=AsyncSession,
     expire_on_commit=False,
@@ -42,8 +41,8 @@ async def init_db() -> None:
     """
     async with async_engine.begin() as conn:
         # Import all models here to ensure they are registered
-        from app.users import models as user_models  # noqa: F401
         from app.clients import models as client_models  # noqa: F401
+        from app.users import models as user_models  # noqa: F401
         # from app.catalog import models as catalog_models  # noqa: F401
         # from app.sessions import models as session_models  # noqa: F401
 

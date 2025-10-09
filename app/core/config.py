@@ -23,29 +23,29 @@ class Settings(BaseSettings):
     APP_VERSION: str = '1.0.0'
     DEBUG: bool = False
     ENVIRONMENT: str = 'development'
-    DOMAIN: str
+    DOMAIN: str = ''
 
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = ''
 
     # Redis
-    REDIS_HOST: str
-    REDIS_PORT: int
-    REDIS_URL: str
+    REDIS_HOST: str = ''
+    REDIS_PORT: int = 0
+    REDIS_URL: str = ''
 
     # Security & JWT
-    JWT_SECRET: str
-    JWT_ALGORITHM: str
+    JWT_SECRET: str = ''
+    JWT_ALGORITHM: str = ''
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRY: float  # In days
+    REFRESH_TOKEN_EXPIRY: float = 30.0
 
     # Email Configuration (all from .env)
-    MAIL_USERNAME: str
-    MAIL_PASSWORD: str
-    MAIL_SERVER: str
-    MAIL_PORT: int
-    MAIL_FROM: str
-    MAIL_FROM_NAME: str
+    MAIL_USERNAME: str = ''
+    MAIL_PASSWORD: str = ''
+    MAIL_SERVER: str = ''
+    MAIL_PORT: int = 587
+    MAIL_FROM: str = ''
+    MAIL_FROM_NAME: str = ''
 
     # Business Rules Configuration
     PAYMENT_DEADLINE_DAYS: int = 5
