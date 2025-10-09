@@ -11,7 +11,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       PGDATA: /var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT:-5434}:5434"
+      - "${POSTGRES_PORT:-5434}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -31,7 +31,7 @@ services:
       - docker-compose.env
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     ports:
-      - "${REDIS_PORT:-6381}:6381"
+      - "${REDIS_PORT:-6381}:6379"
     volumes:
       - redis_data:/data
     networks:
