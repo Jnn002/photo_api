@@ -414,9 +414,9 @@ pytest -k "test_session_creation"
 - ✅ Async database configuration
 - ✅ Docker Compose setup
 - ✅ Virtual environment with UV
+- ✅ Schemas (Pydantic DTOs)
 
 **To Implement:**
-- ⏳ Schemas (Pydantic DTOs)
 - ⏳ Repositories (data access layer)
 - ⏳ Services (business logic)
 - ⏳ Routers (API endpoints)
