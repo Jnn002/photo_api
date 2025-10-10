@@ -12,7 +12,8 @@ wheels/
 #others
 exd.md
 .vscode/mcp.json
-docs/
+test_schemas.py
+test_repositories.py
 
 #env
 *.env
