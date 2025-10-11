@@ -22,8 +22,10 @@ class UserRole(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key='studio.user.id')
     role_id: int = Field(foreign_key='studio.role.id')
-    assigned_at: datetime = Field(default_factory=datetime.utcnow)
+    assigned_at: datetime = Field(default_factory=datetime.now)
     assigned_by: int = Field(foreign_key='studio.user.id')
+    users: 'User' = Relationship(back_populates='user_links')
+    roles: 'Role' = Relationship(back_populates='role_links')
 
 
 class RolePermission(SQLModel, table=True):
@@ -34,8 +36,10 @@ class RolePermission(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     role_id: int = Field(foreign_key='studio.role.id')
     permission_id: int = Field(foreign_key='studio.permission.id')
-    granted_at: datetime = Field(default_factory=datetime.utcnow)
+    granted_at: datetime = Field(default_factory=datetime.now)
     granted_by: int | None = Field(default=None, foreign_key='studio.user.id')
+    roles: 'Role' = Relationship(back_populates='role_links')
+    permissions: 'Permission' = Relationship(back_populates='permission_links')
 
 
 class User(SQLModel, table=True):
@@ -49,14 +53,12 @@ class User(SQLModel, table=True):
     password_hash: str = Field(max_length=255)
     phone: str | None = Field(default=None, max_length=20)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
     created_by: int | None = Field(default=None, foreign_key='studio.user.id')
 
     # Relationships
-    roles: list['Role'] = Relationship(
-        back_populates='users', link_model=UserRole
-    )
+    roles: list['Role'] = Relationship(back_populates='users', link_model=UserRole)
 
 
 class Role(SQLModel, table=True):
@@ -68,13 +70,11 @@ class Role(SQLModel, table=True):
     name: str = Field(unique=True, max_length=50)
     description: str | None = Field(default=None)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships
-    users: list['User'] = Relationship(
-        back_populates='roles', link_model=UserRole
-    )
+    users: list['User'] = Relationship(back_populates='roles', link_model=UserRole)
     permissions: list['Permission'] = Relationship(
         back_populates='roles', link_model=RolePermission
     )
@@ -91,8 +91,8 @@ class Permission(SQLModel, table=True):
     description: str | None = Field(default=None)
     module: str = Field(max_length=50)  # session, client, user, report, etc.
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
 
     # Relationships
     roles: list['Role'] = Relationship(

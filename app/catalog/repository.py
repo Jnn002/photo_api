@@ -126,8 +126,9 @@ class PackageRepository:
         statement = (
             select(Package)
             .where(Package.id == package_id)
-            .options(selectinload(Package.items))  # TODO: validate this
+            .options(selectinload(Package.items))  # type: ignore
         )
+
         result = await self.db.exec(statement)
         return result.first()
 

@@ -24,6 +24,6 @@ class Client(SQLModel, table=True):
     client_type: str = Field(max_length=20)  # Individual | Institutional
     notes: str | None = Field(default=None)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
     created_by: int = Field(foreign_key='studio.user.id')
