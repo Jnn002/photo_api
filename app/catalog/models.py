@@ -8,7 +8,7 @@ This module defines:
 - Room: Studio spaces for sessions
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -29,8 +29,8 @@ class PackageItem(SQLModel, table=True):
     item_id: int = Field(foreign_key='studio.item.id')
     quantity: int = Field(default=1)
     display_order: int | None = Field(default=None)
-    items: 'Item' = Relationship(back_populates='packages')
-    packages: 'Package' = Relationship(back_populates='items')
+    item: 'Item' = Relationship(back_populates='package_links')
+    package: 'Package' = Relationship(back_populates='item_links')
 
 
 class Item(SQLModel, table=True):
@@ -47,21 +47,21 @@ class Item(SQLModel, table=True):
     unit_measure: str = Field(max_length=20)  # Unit, Hour, Package
     default_quantity: int | None = Field(default=None)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+    )
     created_by: int = Field(foreign_key='studio.user.id')
 
     # Relationships
     packages: list['Package'] = Relationship(
         back_populates='items',
         link_model=PackageItem,
-        sa_relationship_kwargs={'lazy': 'selectin'},
     )
+    package_links: list[PackageItem] = Relationship(back_populates='item')
     creator: 'User' = Relationship(
-        sa_relationship_kwargs={
-            'foreign_keys': '[Item.created_by]',
-            'lazy': 'joined',
-        }
+        sa_relationship_kwargs={'foreign_keys': '[Item.created_by]'}
     )
 
 
@@ -78,19 +78,20 @@ class Package(SQLModel, table=True):
     base_price: Decimal = Field(max_digits=10, decimal_places=2)
     estimated_editing_days: int = Field(default=5)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+    )
     created_by: int = Field(foreign_key='studio.user.id')
 
     # Relationships
     items: list['Item'] = Relationship(
         back_populates='packages', link_model=PackageItem
     )
+    item_links: list[PackageItem] = Relationship(back_populates='package')
     creator: 'User' = Relationship(
-        sa_relationship_kwargs={
-            'foreign_keys': '[Package.created_by]',
-            'lazy': 'joined',
-        }
+        sa_relationship_kwargs={'foreign_keys': '[Package.created_by]'}
     )
 
 
@@ -107,8 +108,11 @@ class Room(SQLModel, table=True):
     status: str = Field(
         default='Active', max_length=20
     )  # Active | Inactive | Maintenance
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+    )
 
     # Relationships
-    sessions: list['Session'] = Relationship(back_populates='session_room')
+    sessions: list['Session'] = Relationship(back_populates='room')
