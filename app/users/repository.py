@@ -126,7 +126,7 @@ class RoleRepository:
         statement = (
             select(Role)
             .where(Role.id == role_id)
-            .options(selectinload(Role.permissions))
+            .options(selectinload(Role.permissions))  # type: ignore
         )
         result = await self.db.exec(statement)
         return result.first()

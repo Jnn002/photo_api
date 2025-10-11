@@ -12,7 +12,10 @@ This module defines:
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
+
+from ..catalog.models import Room
+from ..clients.models import Client
 
 
 class Session(SQLModel, table=True):
@@ -39,10 +42,18 @@ class Session(SQLModel, table=True):
     status: str = Field(max_length=50)  # Request, Negotiation, Pre-scheduled, etc.
 
     # Financial
-    total_amount: Decimal = Field(default=Decimal('0.00'), max_digits=10, decimal_places=2)
-    deposit_amount: Decimal = Field(default=Decimal('0.00'), max_digits=10, decimal_places=2)
-    balance_amount: Decimal = Field(default=Decimal('0.00'), max_digits=10, decimal_places=2)
-    paid_amount: Decimal = Field(default=Decimal('0.00'), max_digits=10, decimal_places=2)
+    total_amount: Decimal = Field(
+        default=Decimal('0.00'), max_digits=10, decimal_places=2
+    )
+    deposit_amount: Decimal = Field(
+        default=Decimal('0.00'), max_digits=10, decimal_places=2
+    )
+    balance_amount: Decimal = Field(
+        default=Decimal('0.00'), max_digits=10, decimal_places=2
+    )
+    paid_amount: Decimal = Field(
+        default=Decimal('0.00'), max_digits=10, decimal_places=2
+    )
 
     # Important dates
     payment_deadline: date | None = Field(default=None)
@@ -55,7 +66,9 @@ class Session(SQLModel, table=True):
     editing_completed_at: datetime | None = Field(default=None)
 
     # Delivery tracking
-    delivery_method: str | None = Field(default=None, max_length=50)  # Digital, Physical, Both
+    delivery_method: str | None = Field(
+        default=None, max_length=50
+    )  # Digital, Physical, Both
     delivery_address: str | None = Field(default=None)
     delivered_at: datetime | None = Field(default=None)
 
@@ -65,11 +78,19 @@ class Session(SQLModel, table=True):
     cancellation_reason: str | None = Field(default=None)
 
     # Audit fields
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
     created_by: int = Field(foreign_key='studio.user.id')
     cancelled_at: datetime | None = Field(default=None)
     cancelled_by: int | None = Field(default=None, foreign_key='studio.user.id')
+
+    # Relationships
+    session_details: list['SessionDetail'] = Relationship(back_populates='session')
+    session_room: 'Room' = Relationship(back_populates='session')
+    session_client: 'Client' = Relationship(back_populates='session')
+    session_photographers: list['SessionPhotographer'] = Relationship(
+        back_populates='session'
+    )
 
 
 class SessionDetail(SQLModel, table=True):
@@ -105,8 +126,11 @@ class SessionDetail(SQLModel, table=True):
     delivered_at: datetime | None = Field(default=None)
 
     # Audit
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
     created_by: int = Field(foreign_key='studio.user.id')
+
+    # * Relationships
+    session: 'Session' = Relationship(back_populates='session_detail')
 
 
 class SessionPhotographer(SQLModel, table=True):
@@ -120,13 +144,16 @@ class SessionPhotographer(SQLModel, table=True):
 
     # Assignment details
     role: str | None = Field(default=None, max_length=50)  # Lead, Assistant
-    assigned_at: datetime = Field(default_factory=datetime.utcnow)
+    assigned_at: datetime = Field(default_factory=datetime.now)
     assigned_by: int = Field(foreign_key='studio.user.id')
 
     # Completion tracking
     attended: bool = Field(default=False)
     attended_at: datetime | None = Field(default=None)
     notes: str | None = Field(default=None)
+
+    # * Relationships
+    session: 'Session' = Relationship(back_populates='session_photographers')
 
 
 class SessionPayment(SQLModel, table=True):

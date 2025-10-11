@@ -46,8 +46,8 @@ class SessionRepository:
             select(SessionModel)
             .where(SessionModel.id == session_id)
             .options(
-                selectinload(SessionModel.session_type)
-            )  # TODO: Change to details, FIX SELECTINLOAD
+                selectinload(SessionModel.session_details)  # type: ignore
+            )
         )
         result = await self.db.exec(statement)
         return result.first()

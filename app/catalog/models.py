@@ -13,6 +13,8 @@ from decimal import Decimal
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from ..sessions.models import Session
+
 
 class PackageItem(SQLModel, table=True):
     """Package-item relationship (many-to-many link table)."""
@@ -24,6 +26,8 @@ class PackageItem(SQLModel, table=True):
     item_id: int = Field(foreign_key='studio.item.id')
     quantity: int = Field(default=1)
     display_order: int | None = Field(default=None)
+    items: 'Item' = Relationship(back_populates='packages')
+    packages: 'Package' = Relationship(back_populates='items')
 
 
 class Item(SQLModel, table=True):
@@ -40,13 +44,15 @@ class Item(SQLModel, table=True):
     unit_measure: str = Field(max_length=20)  # Unit, Hour, Package
     default_quantity: int | None = Field(default=None)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
     created_by: int = Field(foreign_key='studio.user.id')
 
     # Relationships
     packages: list['Package'] = Relationship(
-        back_populates='items', link_model=PackageItem
+        back_populates='items',
+        link_model=PackageItem,
+        sa_relationship_kwargs={'lazy': 'selectin'},
     )
 
 
@@ -63,8 +69,8 @@ class Package(SQLModel, table=True):
     base_price: Decimal = Field(max_digits=10, decimal_places=2)
     estimated_editing_days: int = Field(default=5)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
     created_by: int = Field(foreign_key='studio.user.id')
 
     # Relationships
@@ -83,6 +89,9 @@ class Room(SQLModel, table=True):
     description: str | None = Field(default=None)
     capacity: int | None = Field(default=None)  # Number of people
     hourly_rate: Decimal | None = Field(default=None, max_digits=10, decimal_places=2)
-    status: str = Field(default='Active', max_length=20)  # Active | Inactive | Maintenance
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    status: str = Field(
+        default='Active', max_length=20
+    )  # Active | Inactive | Maintenance
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    session: 'Session' = Relationship(back_populates='room')
