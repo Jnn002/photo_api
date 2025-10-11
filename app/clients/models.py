@@ -5,7 +5,7 @@ This module defines the Client model for storing customer information
 (individuals and institutions).
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
@@ -29,15 +29,19 @@ class Client(SQLModel, table=True):
     client_type: str = Field(max_length=20)  # Individual | Institutional
     notes: str | None = Field(default=None)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+    )
     created_by: int = Field(foreign_key='studio.user.id')
 
     # Relationships
-    sessions: list['Session'] = Relationship(back_populates='session_client')
+    sessions: list['Session'] = Relationship(back_populates='client')
     creator: 'User' = Relationship(
+        back_populates='created_clients',
         sa_relationship_kwargs={
             'foreign_keys': '[Client.created_by]',
             'lazy': 'joined',
-        }
+        },
     )
