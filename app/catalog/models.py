@@ -10,10 +10,13 @@ This module defines:
 
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
 
-from ..sessions.models import Session
+if TYPE_CHECKING:
+    from ..sessions.models import Session
+    from ..users.models import User
 
 
 class PackageItem(SQLModel, table=True):
@@ -54,6 +57,12 @@ class Item(SQLModel, table=True):
         link_model=PackageItem,
         sa_relationship_kwargs={'lazy': 'selectin'},
     )
+    creator: 'User' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Item.created_by]',
+            'lazy': 'joined',
+        }
+    )
 
 
 class Package(SQLModel, table=True):
@@ -77,6 +86,12 @@ class Package(SQLModel, table=True):
     items: list['Item'] = Relationship(
         back_populates='packages', link_model=PackageItem
     )
+    creator: 'User' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Package.created_by]',
+            'lazy': 'joined',
+        }
+    )
 
 
 class Room(SQLModel, table=True):
@@ -94,4 +109,6 @@ class Room(SQLModel, table=True):
     )  # Active | Inactive | Maintenance
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-    session: 'Session' = Relationship(back_populates='room')
+
+    # Relationships
+    sessions: list['Session'] = Relationship(back_populates='session_room')

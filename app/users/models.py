@@ -10,8 +10,20 @@ This module defines the core user-related models including:
 """
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from ..catalog.models import Item, Package, Room
+    from ..clients.models import Client
+    from ..sessions.models import (
+        Session,
+        SessionDetail,
+        SessionPayment,
+        SessionPhotographer,
+        SessionStatusHistory,
+    )
 
 
 class UserRole(SQLModel, table=True):
@@ -24,8 +36,10 @@ class UserRole(SQLModel, table=True):
     role_id: int = Field(foreign_key='studio.role.id')
     assigned_at: datetime = Field(default_factory=datetime.now)
     assigned_by: int = Field(foreign_key='studio.user.id')
-    users: 'User' = Relationship(back_populates='user_links')
-    roles: 'Role' = Relationship(back_populates='role_links')
+
+    # Relationships
+    user: 'User' = Relationship(back_populates='user_links')
+    role: 'Role' = Relationship(back_populates='role_links')
 
 
 class RolePermission(SQLModel, table=True):
@@ -38,8 +52,10 @@ class RolePermission(SQLModel, table=True):
     permission_id: int = Field(foreign_key='studio.permission.id')
     granted_at: datetime = Field(default_factory=datetime.now)
     granted_by: int | None = Field(default=None, foreign_key='studio.user.id')
-    roles: 'Role' = Relationship(back_populates='role_links')
-    permissions: 'Permission' = Relationship(back_populates='permission_links')
+
+    # Relationships
+    role: 'Role' = Relationship(back_populates='permission_links')
+    permission: 'Permission' = Relationship(back_populates='role_links')
 
 
 class User(SQLModel, table=True):
@@ -57,8 +73,78 @@ class User(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.now)
     created_by: int | None = Field(default=None, foreign_key='studio.user.id')
 
-    # Relationships
+    # Relationships (link models with extra fields)
+    user_links: list['UserRole'] = Relationship(back_populates='user')
     roles: list['Role'] = Relationship(back_populates='users', link_model=UserRole)
+
+    # Client relationships
+    created_clients: list['Client'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Client.created_by]',
+        }
+    )
+
+    # Session relationships
+    created_sessions: list['Session'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Session.created_by]',
+        }
+    )
+    sessions_as_editor: list['Session'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Session.editing_assigned_to]',
+        }
+    )
+    cancelled_sessions: list['Session'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Session.cancelled_by]',
+        }
+    )
+
+    # SessionDetail relationships
+    created_session_details: list['SessionDetail'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[SessionDetail.created_by]',
+        }
+    )
+
+    # SessionPhotographer relationships
+    photographer_assignments: list['SessionPhotographer'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[SessionPhotographer.photographer_id]',
+        }
+    )
+    assigned_photographer_sessions: list['SessionPhotographer'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[SessionPhotographer.assigned_by]',
+        }
+    )
+
+    # SessionPayment relationships
+    created_payments: list['SessionPayment'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[SessionPayment.created_by]',
+        }
+    )
+
+    # SessionStatusHistory relationships
+    status_changes: list['SessionStatusHistory'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[SessionStatusHistory.changed_by]',
+        }
+    )
+
+    # Catalog relationships
+    created_items: list['Item'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Item.created_by]',
+        }
+    )
+    created_packages: list['Package'] = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Package.created_by]',
+        }
+    )
 
 
 class Role(SQLModel, table=True):
@@ -73,8 +159,10 @@ class Role(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
-    # Relationships
+    # Relationships (link models with extra fields)
+    role_links: list['UserRole'] = Relationship(back_populates='role')
     users: list['User'] = Relationship(back_populates='roles', link_model=UserRole)
+    permission_links: list['RolePermission'] = Relationship(back_populates='role')
     permissions: list['Permission'] = Relationship(
         back_populates='roles', link_model=RolePermission
     )
@@ -94,7 +182,8 @@ class Permission(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
-    # Relationships
+    # Relationships (link models with extra fields)
+    role_links: list['RolePermission'] = Relationship(back_populates='permission')
     roles: list['Role'] = Relationship(
         back_populates='permissions', link_model=RolePermission
     )
