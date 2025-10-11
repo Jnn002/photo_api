@@ -6,8 +6,13 @@ This module defines the Client model for storing customer information
 """
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from ..sessions.models import Session
+    from ..users.models import User
 
 
 class Client(SQLModel, table=True):
@@ -27,3 +32,12 @@ class Client(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     created_by: int = Field(foreign_key='studio.user.id')
+
+    # Relationships
+    sessions: list['Session'] = Relationship(back_populates='session_client')
+    creator: 'User' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Client.created_by]',
+            'lazy': 'joined',
+        }
+    )

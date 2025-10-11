@@ -11,11 +11,14 @@ This module defines:
 
 from datetime import date, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
 
-from ..catalog.models import Room
-from ..clients.models import Client
+if TYPE_CHECKING:
+    from ..catalog.models import Room
+    from ..clients.models import Client
+    from ..users.models import User
 
 
 class Session(SQLModel, table=True):
@@ -86,10 +89,34 @@ class Session(SQLModel, table=True):
 
     # Relationships
     session_details: list['SessionDetail'] = Relationship(back_populates='session')
-    session_room: 'Room' = Relationship(back_populates='session')
-    session_client: 'Client' = Relationship(back_populates='session')
+    session_room: 'Room | None' = Relationship(back_populates='sessions')
+    session_client: 'Client' = Relationship(back_populates='sessions')
     session_photographers: list['SessionPhotographer'] = Relationship(
         back_populates='session'
+    )
+    payments: list['SessionPayment'] = Relationship(back_populates='session')
+    status_history: list['SessionStatusHistory'] = Relationship(
+        back_populates='session'
+    )
+
+    # User relationships
+    editor: 'User | None' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Session.editing_assigned_to]',
+            'lazy': 'joined',
+        }
+    )
+    creator: 'User' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Session.created_by]',
+            'lazy': 'joined',
+        }
+    )
+    canceller: 'User | None' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[Session.cancelled_by]',
+            'lazy': 'joined',
+        }
     )
 
 
@@ -129,8 +156,14 @@ class SessionDetail(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     created_by: int = Field(foreign_key='studio.user.id')
 
-    # * Relationships
-    session: 'Session' = Relationship(back_populates='session_detail')
+    # Relationships
+    session: 'Session' = Relationship(back_populates='session_details')
+    creator: 'User' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[SessionDetail.created_by]',
+            'lazy': 'joined',
+        }
+    )
 
 
 class SessionPhotographer(SQLModel, table=True):
@@ -152,8 +185,20 @@ class SessionPhotographer(SQLModel, table=True):
     attended_at: datetime | None = Field(default=None)
     notes: str | None = Field(default=None)
 
-    # * Relationships
+    # Relationships
     session: 'Session' = Relationship(back_populates='session_photographers')
+    photographer: 'User' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[SessionPhotographer.photographer_id]',
+            'lazy': 'joined',
+        }
+    )
+    assigner: 'User' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[SessionPhotographer.assigned_by]',
+            'lazy': 'joined',
+        }
+    )
 
 
 class SessionPayment(SQLModel, table=True):
@@ -178,6 +223,15 @@ class SessionPayment(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     created_by: int = Field(foreign_key='studio.user.id')
 
+    # Relationships
+    session: 'Session' = Relationship(back_populates='payments')
+    creator: 'User' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[SessionPayment.created_by]',
+            'lazy': 'joined',
+        }
+    )
+
 
 class SessionStatusHistory(SQLModel, table=True):
     """Audit trail of session status changes."""
@@ -198,3 +252,12 @@ class SessionStatusHistory(SQLModel, table=True):
     # Audit
     changed_at: datetime = Field(default_factory=datetime.utcnow)
     changed_by: int = Field(foreign_key='studio.user.id')
+
+    # Relationships
+    session: 'Session' = Relationship(back_populates='status_history')
+    changed_by_user: 'User' = Relationship(
+        sa_relationship_kwargs={
+            'foreign_keys': '[SessionStatusHistory.changed_by]',
+            'lazy': 'joined',
+        }
+    )
