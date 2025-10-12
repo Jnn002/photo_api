@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import col, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import PaymentType, SessionStatus
 from app.sessions.models import (
     Session as SessionModel,
 )
@@ -64,7 +65,7 @@ class SessionRepository:
         return list(result.all())
 
     async def list_by_status(
-        self, status: str, limit: int = 100, offset: int = 0
+        self, status: SessionStatus, limit: int = 100, offset: int = 0
     ) -> list[SessionModel]:
         """List sessions by status."""
         statement = (
@@ -151,7 +152,9 @@ class SessionRepository:
             SessionModel.room_id == room_id,
             SessionModel.session_date == session_date,
             SessionModel.session_time == session_time,
-            col(SessionModel.status).not_in(['Canceled', 'Completed']),
+            col(SessionModel.status).not_in(
+                [SessionStatus.CANCELED, SessionStatus.COMPLETED]
+            ),
         )
         result = await self.db.exec(statement)
         existing = result.first()
@@ -259,7 +262,7 @@ class SessionPaymentRepository:
         statement = (
             select(func.sum(SessionPayment.amount))
             .where(SessionPayment.session_id == session_id)
-            .where(SessionPayment.payment_type != 'Refund')
+            .where(SessionPayment.payment_type != PaymentType.REFUND)
         )
         result = await self.db.exec(statement)
         total = result.first()
@@ -270,7 +273,7 @@ class SessionPaymentRepository:
         statement = (
             select(func.sum(SessionPayment.amount))
             .where(SessionPayment.session_id == session_id)
-            .where(SessionPayment.payment_type == 'Refund')
+            .where(SessionPayment.payment_type == PaymentType.REFUND)
         )
         result = await self.db.exec(statement)
         total = result.first()
@@ -337,7 +340,9 @@ class SessionPhotographerRepository:
                 SessionPhotographer.photographer_id == photographer_id,
                 SessionModel.session_date == session_date,
                 SessionModel.session_time == session_time,
-                col(SessionModel.status).not_in(['Canceled', 'Completed']),
+                col(SessionModel.status).not_in(
+                    [SessionStatus.CANCELED, SessionStatus.COMPLETED]
+                ),
             )
         )
         result = await self.db.exec(statement)

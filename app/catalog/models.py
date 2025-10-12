@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from ..core.enums import ItemType, SessionType, Status
 from ..core.time_utils import get_current_utc_time
 
 if TYPE_CHECKING:
@@ -26,11 +27,11 @@ class PackageItem(SQLModel, table=True):
 
     __table_args__ = {'schema': 'studio'}
 
-    id: int | None = Field(default=None, primary_key=True)
-    package_id: int = Field(foreign_key='studio.package.id')
-    item_id: int = Field(foreign_key='studio.item.id')
+    package_id: int = Field(foreign_key='studio.package.id', primary_key=True)
+    item_id: int = Field(foreign_key='studio.item.id', primary_key=True)
     quantity: int = Field(default=1)
     display_order: int | None = Field(default=None)
+
     item: 'Item' = Relationship(back_populates='package_links')
     package: 'Package' = Relationship(back_populates='item_links')
 
@@ -44,11 +45,11 @@ class Item(SQLModel, table=True):
     code: str = Field(unique=True, max_length=50, index=True)
     name: str = Field(max_length=100)
     description: str | None = Field(default=None)
-    item_type: str = Field(max_length=50)  # Digital Photo, Printed Photo, Album, Video
+    item_type: ItemType
     unit_price: Decimal = Field(max_digits=10, decimal_places=2)
     unit_measure: str = Field(max_length=20)  # Unit, Hour, Package
     default_quantity: int | None = Field(default=None)
-    status: str = Field(default='Active', max_length=20)  # Active | Inactive
+    status: Status = Field(default=Status.ACTIVE)
     created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
         default_factory=get_current_utc_time,
@@ -77,10 +78,10 @@ class Package(SQLModel, table=True):
     code: str = Field(unique=True, max_length=50, index=True)
     name: str = Field(max_length=100)
     description: str | None = Field(default=None)
-    session_type: str = Field(max_length=20)  # Studio | External | Both
+    session_type: SessionType
     base_price: Decimal = Field(max_digits=10, decimal_places=2)
     estimated_editing_days: int = Field(default=5)
-    status: str = Field(default='Active', max_length=20)  # Active | Inactive
+    status: Status = Field(default=Status.ACTIVE)
     created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
         default_factory=get_current_utc_time,
@@ -109,9 +110,7 @@ class Room(SQLModel, table=True):
     description: str | None = Field(default=None)
     capacity: int | None = Field(default=None)  # Number of people
     hourly_rate: Decimal | None = Field(default=None, max_digits=10, decimal_places=2)
-    status: str = Field(
-        default='Active', max_length=20
-    )  # Active | Inactive | Maintenance
+    status: Status = Field(default=Status.ACTIVE)
     created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
         default_factory=get_current_utc_time,
