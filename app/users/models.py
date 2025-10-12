@@ -40,7 +40,12 @@ class UserRole(SQLModel, table=True):
     assigned_by: int = Field(foreign_key='studio.user.id')
 
     # Relationships
-    user: 'User' = Relationship(back_populates='role_links')
+    user: 'User' = Relationship(
+        back_populates='role_links',
+        sa_relationship_kwargs={
+            'foreign_keys': '[UserRole.user_id]',
+        },
+    )
     role: 'Role' = Relationship(back_populates='user_links')
 
 
@@ -55,8 +60,18 @@ class RolePermission(SQLModel, table=True):
     granted_by: int | None = Field(default=None, foreign_key='studio.user.id')
 
     # Relationships
-    role: 'Role' = Relationship(back_populates='permission_links')
-    permission: 'Permission' = Relationship(back_populates='role_links')
+    role: 'Role' = Relationship(
+        back_populates='permission_links',
+        sa_relationship_kwargs={
+            'foreign_keys': '[RolePermission.role_id]',
+        },
+    )
+    permission: 'Permission' = Relationship(
+        back_populates='role_links',
+        sa_relationship_kwargs={
+            'foreign_keys': '[RolePermission.permission_id]',
+        },
+    )
 
 
 class User(SQLModel, table=True):
@@ -78,8 +93,28 @@ class User(SQLModel, table=True):
     created_by: int | None = Field(default=None, foreign_key='studio.user.id')
 
     # Relationships (link models with extra fields)
-    roles: list['Role'] = Relationship(back_populates='users', link_model=UserRole)
-    role_links: list['UserRole'] = Relationship(back_populates='user')
+    # Many-to-many: User <-> Role through UserRole
+    # Note: UserRole has both user_id and assigned_by pointing to User,
+    # so we must specify foreign_keys to avoid ambiguity.
+    # We only want to use user_id and role_id for the many-to-many relationship,
+    # not assigned_by.
+    # The overlaps parameter tells SQLAlchemy that both relationships
+    # write to the same columns, which is expected for many-to-many with link tables.
+    roles: list['Role'] = Relationship(
+        back_populates='users',
+        link_model=UserRole,
+        sa_relationship_kwargs={
+            'foreign_keys': '[UserRole.user_id, UserRole.role_id]',
+            'overlaps': 'user,role',
+        },
+    )
+    role_links: list['UserRole'] = Relationship(
+        back_populates='user',
+        sa_relationship_kwargs={
+            'foreign_keys': '[UserRole.user_id]',
+            'overlaps': 'roles',
+        },
+    )
 
     # Client relationships
     created_clients: list['Client'] = Relationship(
@@ -178,14 +213,36 @@ class Role(SQLModel, table=True):
     )
 
     # Relationships (link models with extra fields)
-
-    users: list['User'] = Relationship(back_populates='roles', link_model=UserRole)
-    user_links: list['UserRole'] = Relationship(back_populates='role')
-
-    permissions: list['Permission'] = Relationship(
-        back_populates='roles', link_model=RolePermission
+    # Many-to-many: Role <-> User through UserRole
+    users: list['User'] = Relationship(
+        back_populates='roles',
+        link_model=UserRole,
+        sa_relationship_kwargs={
+            'foreign_keys': '[UserRole.user_id, UserRole.role_id]',
+            'overlaps': 'user,role',
+        },
     )
-    permission_links: list['RolePermission'] = Relationship(back_populates='role')
+    user_links: list['UserRole'] = Relationship(
+        back_populates='role',
+        sa_relationship_kwargs={
+            'overlaps': 'users',
+        },
+    )
+
+    # Many-to-many: Role <-> Permission through RolePermission
+    permissions: list['Permission'] = Relationship(
+        back_populates='roles',
+        link_model=RolePermission,
+        sa_relationship_kwargs={
+            'overlaps': 'role,permission',
+        },
+    )
+    permission_links: list['RolePermission'] = Relationship(
+        back_populates='role',
+        sa_relationship_kwargs={
+            'overlaps': 'permissions',
+        },
+    )
 
 
 class Permission(SQLModel, table=True):
@@ -206,7 +263,17 @@ class Permission(SQLModel, table=True):
     )
 
     # Relationships (link models with extra fields)
+    # Many-to-many: Permission <-> Role through RolePermission
     roles: list['Role'] = Relationship(
-        back_populates='permissions', link_model=RolePermission
+        back_populates='permissions',
+        link_model=RolePermission,
+        sa_relationship_kwargs={
+            'overlaps': 'role,permission',
+        },
     )
-    role_links: list['RolePermission'] = Relationship(back_populates='permission')
+    role_links: list['RolePermission'] = Relationship(
+        back_populates='permission',
+        sa_relationship_kwargs={
+            'overlaps': 'roles',
+        },
+    )

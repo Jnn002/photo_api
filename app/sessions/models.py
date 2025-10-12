@@ -101,7 +101,7 @@ class Session(SQLModel, table=True):
 
     # Relationships
     client: 'Client' = Relationship(back_populates='sessions')
-    room: 'Room | None' = Relationship(back_populates='sessions')
+    room: 'Room' = Relationship(back_populates='sessions')
     details: list['SessionDetail'] = Relationship(back_populates='session')
 
     photographers: list['SessionPhotographer'] = Relationship(back_populates='session')
@@ -109,9 +109,9 @@ class Session(SQLModel, table=True):
     status_history: list['SessionStatusHistory'] = Relationship(
         back_populates='session'
     )
-
+    # TODO: CHECK THIS RELATIONSHIP
     # User relationships
-    editor: 'User | None' = Relationship(
+    editor: 'User' = Relationship(
         back_populates='sessions_as_editor',
         sa_relationship_kwargs={'foreign_keys': '[Session.editing_assigned_to]'},
     )
@@ -119,7 +119,7 @@ class Session(SQLModel, table=True):
         back_populates='created_sessions',
         sa_relationship_kwargs={'foreign_keys': '[Session.created_by]'},
     )
-    canceller: 'User | None' = Relationship(
+    canceller: 'User' = Relationship(
         back_populates='cancelled_sessions',
         sa_relationship_kwargs={'foreign_keys': '[Session.cancelled_by]'},
     )

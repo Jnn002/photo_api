@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.error_handlers import register_all_errors
+from app.users.router import router as users_router
 
 
 @asynccontextmanager
@@ -96,7 +97,6 @@ async def root():
 
 
 # ==================== Router Includes ====================
-# TODO: Include routers here when implemented
-# Example:
-# from app.users.router import router as users_router
-# app.include_router(users_router, prefix="/api/v1/users", tags=["Users"])
+
+
+app.include_router(users_router, prefix='/api/v1')

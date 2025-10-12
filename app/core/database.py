@@ -41,8 +41,8 @@ async def init_db() -> None:
     """
     async with async_engine.begin() as conn:
         # Import all models here to ensure they are registered
-        from app.clients import models as client_models  # noqa: F401
-        from app.users import models as user_models  # noqa: F401
+        # from app.clients import models as client_models  # noqa: F401
+        # from app.users import models as user_models  # noqa: F401
         # from app.catalog import models as catalog_models  # noqa: F401
         # from app.sessions import models as session_models  # noqa: F401
 

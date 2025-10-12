@@ -5,11 +5,12 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
+
+from alembic import context
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -24,20 +25,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override sqlalchemy.url with our DATABASE_URL from settings
-config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
-
 # Import all models here so Alembic can detect them
 # This is critical for autogenerate to work
-from app.clients.models import Client  # noqa: E402, F401
-from app.users.models import (  # noqa: E402, F401
-    Permission,
-    Role,
-    RolePermission,
-    User,
-    UserRole,
-)
 from app.catalog.models import Item, Package, PackageItem, Room  # noqa: E402, F401
+from app.clients.models import Client  # noqa: E402, F401
 from app.sessions.models import (  # noqa: E402, F401
     Session,
     SessionDetail,
@@ -45,6 +36,16 @@ from app.sessions.models import (  # noqa: E402, F401
     SessionPhotographer,
     SessionStatusHistory,
 )
+from app.users.models import (  # noqa: E402, F401
+    Permission,
+    Role,
+    RolePermission,
+    User,
+    UserRole,
+)
+
+# Override sqlalchemy.url with our DATABASE_URL from settings
+config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
 
 # Set target metadata for autogenerate support
 target_metadata = SQLModel.metadata
