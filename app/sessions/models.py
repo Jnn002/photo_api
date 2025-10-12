@@ -15,6 +15,15 @@ from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from ..core.enums import (
+    DeliveryMethod,
+    LineType,
+    PaymentType,
+    PhotographerRole,
+    ReferenceType,
+    SessionStatus,
+    SessionType,
+)
 from ..core.time_utils import get_current_utc_time
 
 if TYPE_CHECKING:
@@ -34,7 +43,7 @@ class Session(SQLModel, table=True):
     client_id: int = Field(foreign_key='studio.client.id')
 
     # Session details
-    session_type: str = Field(max_length=20)  # Studio | External
+    session_type: SessionType
     session_date: date
     session_time: str | None = Field(default=None, max_length=10)  # e.g., "10:00"
     estimated_duration_hours: int | None = Field(default=None)
@@ -44,7 +53,7 @@ class Session(SQLModel, table=True):
     room_id: int | None = Field(default=None, foreign_key='studio.room.id')
 
     # State machine
-    status: str = Field(max_length=50)  # Request, Negotiation, Pre-scheduled, etc.
+    status: SessionStatus
 
     # Financial
     total_amount: Decimal = Field(
@@ -71,9 +80,7 @@ class Session(SQLModel, table=True):
     editing_completed_at: datetime | None = Field(default=None)
 
     # Delivery tracking
-    delivery_method: str | None = Field(
-        default=None, max_length=50
-    )  # Digital, Physical, Both
+    delivery_method: DeliveryMethod | None = Field(default=None)
     delivery_address: str | None = Field(default=None)
     delivered_at: datetime | None = Field(default=None)
 
@@ -132,9 +139,9 @@ class SessionDetail(SQLModel, table=True):
     session_id: int = Field(foreign_key='studio.session.id')
 
     # Line item details
-    line_type: str = Field(max_length=20)  # Item | Package | Adjustment
+    line_type: LineType
     reference_id: int | None = Field(default=None)  # Original item_id or package_id
-    reference_type: str | None = Field(default=None, max_length=20)  # Item | Package
+    reference_type: ReferenceType | None = Field(default=None)
 
     # Denormalized data (CRITICAL for immutability)
     item_code: str = Field(max_length=50)
@@ -172,7 +179,7 @@ class SessionPhotographer(SQLModel, table=True):
     photographer_id: int = Field(foreign_key='studio.user.id')
 
     # Assignment details
-    role: str | None = Field(default=None, max_length=50)  # Lead, Assistant
+    role: PhotographerRole | None = Field(default=None)
     assigned_at: datetime = Field(default_factory=get_current_utc_time)
     assigned_by: int = Field(foreign_key='studio.user.id')
 
@@ -206,7 +213,7 @@ class SessionPayment(SQLModel, table=True):
     session_id: int = Field(foreign_key='studio.session.id')
 
     # Payment details
-    payment_type: str = Field(max_length=20)  # Deposit | Balance | Partial | Refund
+    payment_type: PaymentType
     payment_method: str = Field(max_length=50)  # Cash, Card, Transfer, etc.
     amount: Decimal = Field(max_digits=10, decimal_places=2)
 

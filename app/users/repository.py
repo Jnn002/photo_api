@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import Status
 from app.users.models import Permission, Role, RolePermission, User, UserRole
 
 # ==================== Permission Repository ====================
@@ -46,7 +47,7 @@ class PermissionRepository:
         """List active permissions with pagination."""
         statement = (
             select(Permission)
-            .where(Permission.status == 'Active')
+            .where(Permission.status == Status.ACTIVE)
             .order_by(Permission.module, Permission.code)
             .offset(offset)
             .limit(limit)
@@ -61,7 +62,7 @@ class PermissionRepository:
         statement = (
             select(Permission)
             .where(Permission.module == module)
-            .where(Permission.status == 'Active')
+            .where(Permission.status == Status.ACTIVE)
             .order_by(Permission.code)
             .offset(offset)
             .limit(limit)
@@ -86,7 +87,7 @@ class PermissionRepository:
 
     async def soft_delete(self, permission: Permission) -> Permission:
         """Soft delete a permission."""
-        permission.status = 'Inactive'
+        permission.status = Status.INACTIVE
         self.db.add(permission)
         await self.db.flush()
         await self.db.refresh(permission)
@@ -147,7 +148,7 @@ class RoleRepository:
         """List active roles with pagination."""
         statement = (
             select(Role)
-            .where(Role.status == 'Active')
+            .where(Role.status == Status.ACTIVE)
             .order_by(Role.name)
             .offset(offset)
             .limit(limit)
@@ -172,7 +173,7 @@ class RoleRepository:
 
     async def soft_delete(self, role: Role) -> Role:
         """Soft delete a role."""
-        role.status = 'Inactive'
+        role.status = Status.INACTIVE
         self.db.add(role)
         await self.db.flush()
         await self.db.refresh(role)
@@ -258,7 +259,7 @@ class UserRepository:
         """List active users with pagination."""
         statement = (
             select(User)
-            .where(User.status == 'Active')
+            .where(User.status == Status.ACTIVE)
             .order_by(User.full_name)
             .offset(offset)
             .limit(limit)
@@ -275,7 +276,7 @@ class UserRepository:
             .join(UserRole)
             .join(Role)
             .where(Role.name == role_name)
-            .where(User.status == 'Active')
+            .where(User.status == Status.ACTIVE)
             .order_by(User.full_name)
             .offset(offset)
             .limit(limit)
@@ -300,7 +301,7 @@ class UserRepository:
 
     async def soft_delete(self, user: User) -> User:
         """Soft delete a user."""
-        user.status = 'Inactive'
+        user.status = Status.INACTIVE
         self.db.add(user)
         await self.db.flush()
         await self.db.refresh(user)
@@ -346,8 +347,8 @@ class UserRepository:
             .join(Role)
             .join(UserRole)
             .where(UserRole.user_id == user_id)
-            .where(Permission.status == 'Active')
-            .where(Role.status == 'Active')
+            .where(Permission.status == Status.ACTIVE)
+            .where(Role.status == Status.ACTIVE)
             .distinct()
         )
         result = await self.db.exec(statement)

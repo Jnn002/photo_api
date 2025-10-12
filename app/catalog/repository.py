@@ -10,6 +10,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.catalog.models import Item, Package, PackageItem, Room
+from app.core.enums import ItemType, SessionType, Status
 
 # ==================== Item Repository ====================
 
@@ -46,7 +47,7 @@ class ItemRepository:
         """List active items with pagination."""
         statement = (
             select(Item)
-            .where(Item.status == 'Active')
+            .where(Item.status == Status.ACTIVE)
             .order_by(Item.name)
             .offset(offset)
             .limit(limit)
@@ -55,13 +56,13 @@ class ItemRepository:
         return list(result.all())
 
     async def list_by_type(
-        self, item_type: str, limit: int = 100, offset: int = 0
+        self, item_type: ItemType, limit: int = 100, offset: int = 0
     ) -> list[Item]:
         """List items by type."""
         statement = (
             select(Item)
             .where(Item.item_type == item_type)
-            .where(Item.status == 'Active')
+            .where(Item.status == Status.ACTIVE)
             .order_by(Item.name)
             .offset(offset)
             .limit(limit)
@@ -86,7 +87,7 @@ class ItemRepository:
 
     async def soft_delete(self, item: Item) -> Item:
         """Soft delete an item."""
-        item.status = 'Inactive'
+        item.status = Status.INACTIVE
         self.db.add(item)
         await self.db.flush()
         await self.db.refresh(item)
@@ -153,7 +154,7 @@ class PackageRepository:
         """List active packages with pagination."""
         statement = (
             select(Package)
-            .where(Package.status == 'Active')
+            .where(Package.status == Status.ACTIVE)
             .order_by(Package.name)
             .offset(offset)
             .limit(limit)
@@ -162,21 +163,21 @@ class PackageRepository:
         return list(result.all())
 
     async def list_by_session_type(
-        self, session_type: str, limit: int = 100, offset: int = 0
+        self, session_type: SessionType, limit: int = 100, offset: int = 0
     ) -> list[Package]:
         """
         List packages by session type (Studio, External, or Both).
 
         Args:
-            session_type: 'Studio', 'External', or 'Both'
+            session_type: SessionType enum value
         """
         statement = (
             select(Package)
             .where(
                 (Package.session_type == session_type)
-                | (Package.session_type == 'Both')
+                | (Package.session_type == SessionType.BOTH)
             )
-            .where(Package.status == 'Active')
+            .where(Package.status == Status.ACTIVE)
             .order_by(Package.name)
             .offset(offset)
             .limit(limit)
@@ -201,7 +202,7 @@ class PackageRepository:
 
     async def soft_delete(self, package: Package) -> Package:
         """Soft delete a package."""
-        package.status = 'Inactive'
+        package.status = Status.INACTIVE
         self.db.add(package)
         await self.db.flush()
         await self.db.refresh(package)
@@ -260,7 +261,7 @@ class RoomRepository:
         """List active rooms with pagination."""
         statement = (
             select(Room)
-            .where(Room.status == 'Active')
+            .where(Room.status == Status.ACTIVE)
             .order_by(Room.name)
             .offset(offset)
             .limit(limit)
@@ -285,7 +286,7 @@ class RoomRepository:
 
     async def soft_delete(self, room: Room) -> Room:
         """Soft delete a room."""
-        room.status = 'Inactive'
+        room.status = Status.INACTIVE
         self.db.add(room)
         await self.db.flush()
         await self.db.refresh(room)
@@ -293,7 +294,7 @@ class RoomRepository:
 
     async def set_maintenance(self, room: Room) -> Room:
         """Set room status to Maintenance."""
-        room.status = 'Maintenance'
+        room.status = Status.MAINTENANCE
         self.db.add(room)
         await self.db.flush()
         await self.db.refresh(room)

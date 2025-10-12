@@ -9,6 +9,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.clients.models import Client
+from app.core.enums import ClientType, Status
 
 
 class ClientRepository:
@@ -77,7 +78,7 @@ class ClientRepository:
         """
         statement = (
             select(Client)
-            .where(Client.status == 'Active')
+            .where(Client.status == Status.ACTIVE)
             .order_by(col(Client.created_at).desc())
             .offset(offset)
             .limit(limit)
@@ -86,13 +87,13 @@ class ClientRepository:
         return list(result.all())
 
     async def list_by_type(
-        self, client_type: str, limit: int = 100, offset: int = 0
+        self, client_type: ClientType, limit: int = 100, offset: int = 0
     ) -> list[Client]:
         """
         List clients by type (Individual or Institutional).
 
         Args:
-            client_type: Type of client ('Individual' or 'Institutional')
+            client_type: Type of client (ClientType enum)
             limit: Maximum number of clients to return (default: 100)
             offset: Number of clients to skip (default: 0)
 
@@ -102,7 +103,7 @@ class ClientRepository:
         statement = (
             select(Client)
             .where(Client.client_type == client_type)
-            .where(Client.status == 'Active')
+            .where(Client.status == Status.ACTIVE)
             .order_by(Client.full_name)
             .offset(offset)
             .limit(limit)
@@ -128,7 +129,7 @@ class ClientRepository:
         statement = (
             select(Client)
             .where(col(Client.full_name).ilike(search_pattern))
-            .where(Client.status == 'Active')
+            .where(Client.status == Status.ACTIVE)
             .order_by(col(Client.full_name))
             .offset(offset)
             .limit(limit)
@@ -178,7 +179,7 @@ class ClientRepository:
         Returns:
             Updated client with Inactive status
         """
-        client.status = 'Inactive'
+        client.status = Status.INACTIVE
         self.db.add(client)
         await self.db.flush()
         await self.db.refresh(client)
@@ -194,7 +195,7 @@ class ClientRepository:
         Returns:
             Updated client with Active status
         """
-        client.status = 'Active'
+        client.status = Status.ACTIVE
         self.db.add(client)
         await self.db.flush()
         await self.db.refresh(client)

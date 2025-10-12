@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from ..core.enums import Status
 from ..core.time_utils import get_current_utc_time
 
 if TYPE_CHECKING:
@@ -33,9 +34,8 @@ class UserRole(SQLModel, table=True):
 
     __table_args__ = {'schema': 'studio'}
 
-    id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key='studio.user.id')
-    role_id: int = Field(foreign_key='studio.role.id')
+    user_id: int = Field(foreign_key='studio.user.id', primary_key=True)
+    role_id: int = Field(foreign_key='studio.role.id', primary_key=True)
     assigned_at: datetime = Field(default_factory=get_current_utc_time)
     assigned_by: int = Field(foreign_key='studio.user.id')
 
@@ -49,9 +49,8 @@ class RolePermission(SQLModel, table=True):
 
     __table_args__ = {'schema': 'studio'}
 
-    id: int | None = Field(default=None, primary_key=True)
-    role_id: int = Field(foreign_key='studio.role.id')
-    permission_id: int = Field(foreign_key='studio.permission.id')
+    role_id: int = Field(foreign_key='studio.role.id', primary_key=True)
+    permission_id: int = Field(foreign_key='studio.permission.id', primary_key=True)
     granted_at: datetime = Field(default_factory=get_current_utc_time)
     granted_by: int | None = Field(default=None, foreign_key='studio.user.id')
 
@@ -70,7 +69,7 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True, index=True, max_length=100)
     password_hash: str = Field(max_length=255)
     phone: str | None = Field(default=None, max_length=20)
-    status: str = Field(default='Active', max_length=20)  # Active | Inactive
+    status: Status = Field(default=Status.ACTIVE)
     created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
         default_factory=get_current_utc_time,
@@ -171,7 +170,7 @@ class Role(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(unique=True, max_length=50)
     description: str | None = Field(default=None)
-    status: str = Field(default='Active', max_length=20)  # Active | Inactive
+    status: Status = Field(default=Status.ACTIVE)
     created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
         default_factory=get_current_utc_time,
@@ -199,7 +198,7 @@ class Permission(SQLModel, table=True):
     name: str = Field(max_length=100)
     description: str | None = Field(default=None)
     module: str = Field(max_length=50)  # session, client, user, report, etc.
-    status: str = Field(default='Active', max_length=20)  # Active | Inactive
+    status: Status = Field(default=Status.ACTIVE)
     created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
         default_factory=get_current_utc_time,

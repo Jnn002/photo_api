@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from ..core.enums import ClientType, Status
 from ..core.time_utils import get_current_utc_time
 
 if TYPE_CHECKING:
@@ -28,9 +29,9 @@ class Client(SQLModel, table=True):
     primary_phone: str = Field(max_length=20)
     secondary_phone: str | None = Field(default=None, max_length=20)
     delivery_address: str | None = Field(default=None)
-    client_type: str = Field(max_length=20)  # Individual | Institutional
+    client_type: ClientType
     notes: str | None = Field(default=None)
-    status: str = Field(default='Active', max_length=20)  # Active | Inactive
+    status: Status = Field(default=Status.ACTIVE)
     created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
         default_factory=get_current_utc_time,
