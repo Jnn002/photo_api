@@ -9,10 +9,12 @@ This module defines the core user-related models including:
 - RolePermission: Many-to-many relationship between roles and permissions
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
+
+from ..core.time_utils import get_current_utc_time
 
 if TYPE_CHECKING:
     from ..catalog.models import Item, Package
@@ -34,7 +36,7 @@ class UserRole(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key='studio.user.id')
     role_id: int = Field(foreign_key='studio.role.id')
-    assigned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    assigned_at: datetime = Field(default_factory=get_current_utc_time)
     assigned_by: int = Field(foreign_key='studio.user.id')
 
     # Relationships
@@ -50,7 +52,7 @@ class RolePermission(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     role_id: int = Field(foreign_key='studio.role.id')
     permission_id: int = Field(foreign_key='studio.permission.id')
-    granted_at: datetime = Field(default_factory=datetime.now)
+    granted_at: datetime = Field(default_factory=get_current_utc_time)
     granted_by: int | None = Field(default=None, foreign_key='studio.user.id')
 
     # Relationships
@@ -69,10 +71,10 @@ class User(SQLModel, table=True):
     password_hash: str = Field(max_length=255)
     phone: str | None = Field(default=None, max_length=20)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+        default_factory=get_current_utc_time,
+        sa_column_kwargs={'onupdate': get_current_utc_time},
     )
     created_by: int | None = Field(default=None, foreign_key='studio.user.id')
 
@@ -170,16 +172,13 @@ class Role(SQLModel, table=True):
     name: str = Field(unique=True, max_length=50)
     description: str | None = Field(default=None)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+        default_factory=get_current_utc_time,
+        sa_column_kwargs={'onupdate': get_current_utc_time},
     )
 
     # Relationships (link models with extra fields)
-    permissions: list['Permission'] = Relationship(
-        back_populates='roles', link_model=RolePermission
-    )
 
     users: list['User'] = Relationship(back_populates='roles', link_model=UserRole)
     user_links: list['UserRole'] = Relationship(back_populates='role')
@@ -201,14 +200,14 @@ class Permission(SQLModel, table=True):
     description: str | None = Field(default=None)
     module: str = Field(max_length=50)  # session, client, user, report, etc.
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+        default_factory=get_current_utc_time,
+        sa_column_kwargs={'onupdate': get_current_utc_time},
     )
 
     # Relationships (link models with extra fields)
-    role_links: list['RolePermission'] = Relationship(back_populates='permission')
     roles: list['Role'] = Relationship(
         back_populates='permissions', link_model=RolePermission
     )
+    role_links: list['RolePermission'] = Relationship(back_populates='permission')
