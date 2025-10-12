@@ -9,11 +9,13 @@ This module defines:
 - SessionStatusHistory: Audit trail of status changes
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
+
+from ..core.time_utils import get_current_utc_time
 
 if TYPE_CHECKING:
     from ..catalog.models import Room
@@ -81,10 +83,10 @@ class Session(SQLModel, table=True):
     cancellation_reason: str | None = Field(default=None)
 
     # Audit fields
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+        default_factory=get_current_utc_time,
+        sa_column_kwargs={'onupdate': get_current_utc_time},
     )
     created_by: int = Field(foreign_key='studio.user.id')
     cancelled_at: datetime | None = Field(default=None)
@@ -104,24 +106,15 @@ class Session(SQLModel, table=True):
     # User relationships
     editor: 'User | None' = Relationship(
         back_populates='sessions_as_editor',
-        sa_relationship_kwargs={
-            'foreign_keys': '[Session.editing_assigned_to]',
-            'lazy': 'joined',
-        },
+        sa_relationship_kwargs={'foreign_keys': '[Session.editing_assigned_to]'},
     )
     creator: 'User' = Relationship(
         back_populates='created_sessions',
-        sa_relationship_kwargs={
-            'foreign_keys': '[Session.created_by]',
-            'lazy': 'joined',
-        },
+        sa_relationship_kwargs={'foreign_keys': '[Session.created_by]'},
     )
     canceller: 'User | None' = Relationship(
         back_populates='cancelled_sessions',
-        sa_relationship_kwargs={
-            'foreign_keys': '[Session.cancelled_by]',
-            'lazy': 'joined',
-        },
+        sa_relationship_kwargs={'foreign_keys': '[Session.cancelled_by]'},
     )
 
 
@@ -158,17 +151,14 @@ class SessionDetail(SQLModel, table=True):
     delivered_at: datetime | None = Field(default=None)
 
     # Audit
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=get_current_utc_time)
     created_by: int = Field(foreign_key='studio.user.id')
 
     # Relationships
     session: 'Session' = Relationship(back_populates='details')
     creator: 'User' = Relationship(
         back_populates='created_session_details',
-        sa_relationship_kwargs={
-            'foreign_keys': '[SessionDetail.created_by]',
-            'lazy': 'joined',
-        },
+        sa_relationship_kwargs={'foreign_keys': '[SessionDetail.created_by]'},
     )
 
 
@@ -183,7 +173,7 @@ class SessionPhotographer(SQLModel, table=True):
 
     # Assignment details
     role: str | None = Field(default=None, max_length=50)  # Lead, Assistant
-    assigned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    assigned_at: datetime = Field(default_factory=get_current_utc_time)
     assigned_by: int = Field(foreign_key='studio.user.id')
 
     # Completion tracking
@@ -197,14 +187,12 @@ class SessionPhotographer(SQLModel, table=True):
         back_populates='photographer_assignments',
         sa_relationship_kwargs={
             'foreign_keys': '[SessionPhotographer.photographer_id]',
-            'lazy': 'joined',
         },
     )
     assigner: 'User' = Relationship(
         back_populates='assigned_photographer_sessions',
         sa_relationship_kwargs={
             'foreign_keys': '[SessionPhotographer.assigned_by]',
-            'lazy': 'joined',
         },
     )
 
@@ -228,17 +216,14 @@ class SessionPayment(SQLModel, table=True):
     notes: str | None = Field(default=None)
 
     # Audit
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=get_current_utc_time)
     created_by: int = Field(foreign_key='studio.user.id')
 
     # Relationships
     session: 'Session' = Relationship(back_populates='payments')
     creator: 'User' = Relationship(
         back_populates='created_payments',
-        sa_relationship_kwargs={
-            'foreign_keys': '[SessionPayment.created_by]',
-            'lazy': 'joined',
-        },
+        sa_relationship_kwargs={'foreign_keys': '[SessionPayment.created_by]'},
     )
 
 
@@ -259,18 +244,12 @@ class SessionStatusHistory(SQLModel, table=True):
     notes: str | None = Field(default=None)
 
     # Audit
-    changed_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
-    )
+    changed_at: datetime = Field(default_factory=get_current_utc_time)
     changed_by: int = Field(foreign_key='studio.user.id')
 
     # Relationships
     session: 'Session' = Relationship(back_populates='status_history')
     changed_by_user: 'User' = Relationship(
         back_populates='status_changes',
-        sa_relationship_kwargs={
-            'foreign_keys': '[SessionStatusHistory.changed_by]',
-            'lazy': 'joined',
-        },
+        sa_relationship_kwargs={'foreign_keys': '[SessionStatusHistory.changed_by]'},
     )

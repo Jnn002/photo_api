@@ -8,11 +8,13 @@ This module defines:
 - Room: Studio spaces for sessions
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
+
+from ..core.time_utils import get_current_utc_time
 
 if TYPE_CHECKING:
     from ..sessions.models import Session
@@ -47,10 +49,10 @@ class Item(SQLModel, table=True):
     unit_measure: str = Field(max_length=20)  # Unit, Hour, Package
     default_quantity: int | None = Field(default=None)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+        default_factory=get_current_utc_time,
+        sa_column_kwargs={'onupdate': get_current_utc_time},
     )
     created_by: int = Field(foreign_key='studio.user.id')
 
@@ -61,7 +63,8 @@ class Item(SQLModel, table=True):
     )
     package_links: list[PackageItem] = Relationship(back_populates='item')
     creator: 'User' = Relationship(
-        sa_relationship_kwargs={'foreign_keys': '[Item.created_by]'}
+        back_populates='created_items',
+        sa_relationship_kwargs={'foreign_keys': '[Item.created_by]'},
     )
 
 
@@ -78,10 +81,10 @@ class Package(SQLModel, table=True):
     base_price: Decimal = Field(max_digits=10, decimal_places=2)
     estimated_editing_days: int = Field(default=5)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+        default_factory=get_current_utc_time,
+        sa_column_kwargs={'onupdate': get_current_utc_time},
     )
     created_by: int = Field(foreign_key='studio.user.id')
 
@@ -91,7 +94,8 @@ class Package(SQLModel, table=True):
     )
     item_links: list[PackageItem] = Relationship(back_populates='package')
     creator: 'User' = Relationship(
-        sa_relationship_kwargs={'foreign_keys': '[Package.created_by]'}
+        back_populates='created_packages',
+        sa_relationship_kwargs={'foreign_keys': '[Package.created_by]'},
     )
 
 
@@ -108,10 +112,10 @@ class Room(SQLModel, table=True):
     status: str = Field(
         default='Active', max_length=20
     )  # Active | Inactive | Maintenance
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+        default_factory=get_current_utc_time,
+        sa_column_kwargs={'onupdate': get_current_utc_time},
     )
 
     # Relationships

@@ -5,10 +5,12 @@ This module defines the Client model for storing customer information
 (individuals and institutions).
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
+
+from ..core.time_utils import get_current_utc_time
 
 if TYPE_CHECKING:
     from ..sessions.models import Session
@@ -29,10 +31,10 @@ class Client(SQLModel, table=True):
     client_type: str = Field(max_length=20)  # Individual | Institutional
     notes: str | None = Field(default=None)
     status: str = Field(default='Active', max_length=20)  # Active | Inactive
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=get_current_utc_time)
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={'onupdate': datetime.now(timezone.utc)},
+        default_factory=get_current_utc_time,
+        sa_column_kwargs={'onupdate': get_current_utc_time},
     )
     created_by: int = Field(foreign_key='studio.user.id')
 
@@ -40,8 +42,5 @@ class Client(SQLModel, table=True):
     sessions: list['Session'] = Relationship(back_populates='client')
     creator: 'User' = Relationship(
         back_populates='created_clients',
-        sa_relationship_kwargs={
-            'foreign_keys': '[Client.created_by]',
-            'lazy': 'joined',
-        },
+        sa_relationship_kwargs={'foreign_keys': '[Client.created_by]'},
     )
