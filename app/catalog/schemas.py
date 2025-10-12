@@ -12,6 +12,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from ..core.enums import ItemType, SessionType, Status
+
 # ==================== Item Schemas ====================
 
 
@@ -21,11 +23,9 @@ class ItemCreate(BaseModel):
     code: str = Field(..., min_length=1, max_length=50)
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
-    item_type: str = Field(
-        ..., pattern='^(Digital Photo|Printed Photo|Album|Video|Other)$'
-    )
+    item_type: ItemType
     unit_price: Decimal = Field(..., gt=0, max_digits=10, decimal_places=2)
-    unit_measure: str = Field(..., pattern='^(Unit|Hour|Package)$')
+    unit_measure: str = Field(..., max_length=20)
     default_quantity: int | None = Field(default=None, ge=1)
 
     @field_validator('code', 'name')
@@ -51,15 +51,13 @@ class ItemUpdate(BaseModel):
     code: str | None = Field(default=None, min_length=1, max_length=50)
     name: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = None
-    item_type: str | None = Field(
-        default=None, pattern='^(Digital Photo|Printed Photo|Album|Video|Other)$'
-    )
+    item_type: ItemType | None = None
     unit_price: Decimal | None = Field(
         default=None, gt=0, max_digits=10, decimal_places=2
     )
-    unit_measure: str | None = Field(default=None, pattern='^(Unit|Hour|Package)$')
+    unit_measure: str | None = Field(default=None, max_length=20)
     default_quantity: int | None = Field(default=None, ge=1)
-    status: str | None = Field(default=None, pattern='^(Active|Inactive)$')
+    status: Status | None = None
 
     @field_validator('code', 'name')
     @classmethod
@@ -87,11 +85,11 @@ class ItemPublic(BaseModel):
     code: str
     name: str
     description: str | None
-    item_type: str
+    item_type: ItemType
     unit_price: Decimal
     unit_measure: str
     default_quantity: int | None
-    status: str
+    status: Status
     created_at: datetime
     updated_at: datetime
 
@@ -117,7 +115,7 @@ class PackageCreate(BaseModel):
     code: str = Field(..., min_length=1, max_length=50)
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
-    session_type: str = Field(..., pattern='^(Studio|External|Both)$')
+    session_type: SessionType
     base_price: Decimal = Field(..., gt=0, max_digits=10, decimal_places=2)
     estimated_editing_days: int = Field(..., ge=1, le=365)
 
@@ -144,12 +142,12 @@ class PackageUpdate(BaseModel):
     code: str | None = Field(default=None, min_length=1, max_length=50)
     name: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = None
-    session_type: str | None = Field(default=None, pattern='^(Studio|External|Both)$')
+    session_type: SessionType | None = None
     base_price: Decimal | None = Field(
         default=None, gt=0, max_digits=10, decimal_places=2
     )
     estimated_editing_days: int | None = Field(default=None, ge=1, le=365)
-    status: str | None = Field(default=None, pattern='^(Active|Inactive)$')
+    status: Status | None = None
 
     @field_validator('code', 'name')
     @classmethod
@@ -177,10 +175,10 @@ class PackagePublic(BaseModel):
     code: str
     name: str
     description: str | None
-    session_type: str
+    session_type: SessionType
     base_price: Decimal
     estimated_editing_days: int
-    status: str
+    status: Status
     created_at: datetime
     updated_at: datetime
 
@@ -230,7 +228,7 @@ class RoomUpdate(BaseModel):
     hourly_rate: Decimal | None = Field(
         default=None, ge=0, max_digits=10, decimal_places=2
     )
-    status: str | None = Field(default=None, pattern='^(Active|Inactive|Maintenance)$')
+    status: Status | None = None
 
     @field_validator('name')
     @classmethod
@@ -259,7 +257,7 @@ class RoomPublic(BaseModel):
     description: str | None
     capacity: int | None
     hourly_rate: Decimal | None
-    status: str
+    status: Status
     created_at: datetime
     updated_at: datetime
 

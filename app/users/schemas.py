@@ -11,6 +11,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from ..core.enums import Status
+
 # ==================== Permission Schemas ====================
 
 
@@ -49,7 +51,7 @@ class PermissionUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = None
     module: str | None = Field(default=None, min_length=1, max_length=50)
-    status: str | None = Field(default=None, pattern='^(Active|Inactive)$')
+    status: Status | None = None
 
     @field_validator('code', 'name', 'module')
     @classmethod
@@ -70,7 +72,7 @@ class PermissionPublic(BaseModel):
     name: str
     description: str | None
     module: str
-    status: str
+    status: Status
     created_at: datetime
     updated_at: datetime
 
@@ -98,7 +100,7 @@ class RoleUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=50)
     description: str | None = None
-    status: str | None = Field(default=None, pattern='^(Active|Inactive)$')
+    status: Status | None = None
 
     @field_validator('name')
     @classmethod
@@ -117,7 +119,7 @@ class RolePublic(BaseModel):
     id: int
     name: str
     description: str | None
-    status: str
+    status: Status
     created_at: datetime
     updated_at: datetime
 
@@ -171,7 +173,7 @@ class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=100)
     email: EmailStr | None = Field(default=None, max_length=100)
     phone: str | None = Field(default=None, max_length=20)
-    status: str | None = Field(default=None, pattern='^(Active|Inactive)$')
+    status: Status | None = None
 
     @field_validator('full_name')
     @classmethod
@@ -213,7 +215,7 @@ class UserPublic(BaseModel):
     full_name: str
     email: str
     phone: str | None
-    status: str
+    status: Status
     created_at: datetime
     updated_at: datetime
 

@@ -17,6 +17,16 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from ..core.enums import (
+    DeliveryMethod,
+    LineType,
+    PaymentType,
+    PhotographerRole,
+    ReferenceType,
+    SessionStatus,
+    SessionType,
+)
+
 # ==================== Session Schemas ====================
 
 
@@ -24,7 +34,7 @@ class SessionCreate(BaseModel):
     """Schema for creating a new session."""
 
     client_id: int = Field(..., gt=0)
-    session_type: str = Field(..., pattern='^(Studio|External)$')
+    session_type: SessionType
     session_date: date
     session_time: str | None = Field(default=None, max_length=10)
     estimated_duration_hours: int | None = Field(default=None, ge=1, le=24)
@@ -68,13 +78,13 @@ class SessionCreate(BaseModel):
     @model_validator(mode='after')
     def validate_session_requirements(self) -> Self:
         """Validate session type-specific requirements."""
-        if self.session_type == 'External' and not self.location:
+        if self.session_type == SessionType.EXTERNAL and not self.location:
             raise ValueError('location is required for External sessions')
 
-        if self.session_type == 'Studio' and not self.room_id:
+        if self.session_type == SessionType.STUDIO and not self.room_id:
             raise ValueError('room_id is required for Studio sessions')
 
-        if self.session_type == 'External' and self.room_id:
+        if self.session_type == SessionType.EXTERNAL and self.room_id:
             raise ValueError('room_id should not be set for External sessions')
 
         return self
@@ -90,9 +100,7 @@ class SessionUpdate(BaseModel):
     room_id: int | None = Field(default=None, gt=0)
     client_requirements: str | None = None
     internal_notes: str | None = None
-    delivery_method: str | None = Field(
-        default=None, pattern='^(Digital|Physical|Both)$'
-    )
+    delivery_method: DeliveryMethod | None = None
     delivery_address: str | None = None
 
     @field_validator('session_date')
@@ -132,13 +140,13 @@ class SessionPublic(BaseModel):
 
     id: int
     client_id: int
-    session_type: str
+    session_type: SessionType
     session_date: date
     session_time: str | None
     estimated_duration_hours: int | None
     location: str | None
     room_id: int | None
-    status: str
+    status: SessionStatus
     total_amount: Decimal
     deposit_amount: Decimal
     balance_amount: Decimal
@@ -157,7 +165,7 @@ class SessionDetail(SessionPublic):
     editing_assigned_to: int | None
     editing_started_at: datetime | None
     editing_completed_at: datetime | None
-    delivery_method: str | None
+    delivery_method: DeliveryMethod | None
     delivery_address: str | None
     delivered_at: datetime | None
     internal_notes: str | None
@@ -172,9 +180,9 @@ class SessionDetail(SessionPublic):
 class SessionDetailCreate(BaseModel):
     """Schema for creating a session detail line item."""
 
-    line_type: str = Field(..., pattern='^(Item|Package|Adjustment)$')
+    line_type: LineType
     reference_id: int | None = Field(default=None, gt=0)
-    reference_type: str | None = Field(default=None, pattern='^(Item|Package)$')
+    reference_type: ReferenceType | None = None
     item_code: str = Field(..., min_length=1, max_length=50)
     item_name: str = Field(..., min_length=1, max_length=100)
     item_description: str | None = None
@@ -192,7 +200,7 @@ class SessionDetailCreate(BaseModel):
     @model_validator(mode='after')
     def validate_reference_consistency(self) -> Self:
         """Ensure reference fields are consistent."""
-        if self.line_type in ['Item', 'Package']:
+        if self.line_type in [LineType.ITEM, LineType.PACKAGE]:
             if not self.reference_id or not self.reference_type:
                 raise ValueError(
                     'reference_id and reference_type required for Item/Package lines'
@@ -207,9 +215,9 @@ class SessionDetailPublic(BaseModel):
 
     id: int
     session_id: int
-    line_type: str
+    line_type: LineType
     reference_id: int | None
-    reference_type: str | None
+    reference_type: ReferenceType | None
     item_code: str
     item_name: str
     item_description: str | None
@@ -229,7 +237,7 @@ class SessionPhotographerAssign(BaseModel):
 
     session_id: int = Field(..., gt=0)
     photographer_id: int = Field(..., gt=0)
-    role: str | None = Field(default=None, pattern='^(Lead|Assistant)$')
+    role: PhotographerRole | None = None
 
     @field_validator('session_id', 'photographer_id')
     @classmethod
@@ -255,7 +263,7 @@ class SessionPhotographerPublic(BaseModel):
     id: int
     session_id: int
     photographer_id: int
-    role: str | None
+    role: PhotographerRole | None
     assigned_at: datetime
     assigned_by: int
     attended: bool
@@ -270,7 +278,7 @@ class SessionPaymentCreate(BaseModel):
     """Schema for creating a session payment."""
 
     session_id: int = Field(..., gt=0)
-    payment_type: str = Field(..., pattern='^(Deposit|Balance|Partial|Refund)$')
+    payment_type: PaymentType
     payment_method: str = Field(..., min_length=1, max_length=50)
     amount: Decimal = Field(..., gt=0, max_digits=10, decimal_places=2)
     transaction_reference: str | None = Field(default=None, max_length=100)
@@ -309,7 +317,7 @@ class SessionPaymentPublic(BaseModel):
 
     id: int
     session_id: int
-    payment_type: str
+    payment_type: PaymentType
     payment_method: str
     amount: Decimal
     transaction_reference: str | None
@@ -377,18 +385,7 @@ class SessionStatusTransition(BaseModel):
     @classmethod
     def validate_allowed_status(cls, v: str) -> str:
         """Validate that status is one of the allowed values."""
-        allowed_statuses = {
-            'Request',
-            'Negotiation',
-            'Pre-scheduled',
-            'Confirmed',
-            'Assigned',
-            'Attended',
-            'In Editing',
-            'Ready for Delivery',
-            'Completed',
-            'Canceled',
-        }
+        allowed_statuses = {e.value for e in SessionStatus}
         if v not in allowed_statuses:
             raise ValueError(f'Invalid status. Must be one of: {allowed_statuses}')
         return v
@@ -427,13 +424,16 @@ class SessionEditorAssignment(BaseModel):
 class SessionDelivery(BaseModel):
     """Schema for marking session as delivered."""
 
-    delivery_method: str = Field(..., pattern='^(Digital|Physical|Both)$')
+    delivery_method: DeliveryMethod
     delivery_address: str | None = None
     notes: str | None = None
 
     @model_validator(mode='after')
     def validate_delivery_requirements(self) -> Self:
         """Validate delivery method-specific requirements."""
-        if self.delivery_method in ['Physical', 'Both'] and not self.delivery_address:
+        if self.delivery_method in [
+            DeliveryMethod.PHYSICAL,
+            DeliveryMethod.BOTH,
+        ] and not self.delivery_address:
             raise ValueError('delivery_address required for Physical delivery')
         return self
