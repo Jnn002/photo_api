@@ -5,6 +5,7 @@ This module provides centralized exception handling with consistent error respon
 following FastAPI best practices.
 """
 
+import logging
 from typing import Any, Callable
 
 from fastapi import FastAPI, Request, status
@@ -12,6 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
+from .config import settings
 from .exceptions import (
     BusinessValidationException,
     DeadlineExpiredException,
@@ -36,6 +38,9 @@ from .exceptions import (
     TokenExpiredException,
     UnauthorizedException,
 )
+
+# Configure logger for this module
+logger = logging.getLogger(__name__)
 
 
 def create_exception_handler(
@@ -386,15 +391,29 @@ def register_all_errors(app: FastAPI) -> None:
 
     @app.exception_handler(SQLAlchemyError)
     async def database_error_handler(request: Request, exc: SQLAlchemyError):
-        # Log the actual error for debugging
-        print(f'Database error: {str(exc)}')
+        # Use proper logging with levels
+        logger.error(
+            'Database error occurred',
+            extra={
+                'error': str(exc),
+                'type': type(exc).__name__,
+                'path': request.url.path,
+                'method': request.method,
+            },
+            exc_info=settings.DEBUG,  # Stack trace only in debug mode
+        )
+
+        # Don't expose database details in production
+        detail = {}
+        if settings.DEBUG:
+            detail = {'error_type': type(exc).__name__, 'error_message': str(exc)}
 
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 'message': 'A database error occurred',
                 'error_code': 'database_error',
-                'detail': {},
+                'detail': detail,
             },
         )
 

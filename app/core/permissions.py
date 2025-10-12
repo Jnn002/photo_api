@@ -21,6 +21,9 @@ async def get_user_permissions(user: User, db: AsyncSession) -> set[str]:
     """
     Get all permission codes for a user through their roles.
 
+    Uses cached permissions if available (set by get_current_user dependency)
+    to avoid N+1 query problems.
+
     Args:
         user: The user to get permissions for
         db: Database session
@@ -28,6 +31,11 @@ async def get_user_permissions(user: User, db: AsyncSession) -> set[str]:
     Returns:
         Set of permission codes (e.g., {'session.create', 'client.read'})
     """
+    # Use cached permissions if available (set by get_current_user)
+    if hasattr(user, '_cached_permissions'):
+        return user._cached_permissions  # type: ignore
+
+    # Otherwise query database
     user_repo = UserRepository(db)
     permissions = await user_repo.get_user_permissions(user.id)
     return {perm.code for perm in permissions}
@@ -65,13 +73,14 @@ async def check_user_role(user: User, role_name: str, db: AsyncSession) -> bool:
     """
     # Eager load roles if not already loaded
     if not user.roles:
-        from app.users.repository import UserRepository
-
-        # TODO: check this type ignore
         user_repo = UserRepository(db)
-        user = await user_repo.get_with_roles(user.id)  # type: ignore
-        if not user:
+        user_with_roles = await user_repo.get_with_roles(user.id)
+
+        # If user not found, they don't have the role
+        if not user_with_roles:
             return False
+
+        user = user_with_roles
 
     # Check if user has the role and it's active
     for role in user.roles:

@@ -281,6 +281,7 @@ class TokenResponse(BaseModel):
     """Response schema for successful authentication."""
 
     access_token: str
+    refresh_token: str
     token_type: str = 'bearer'
     expires_in: int  # seconds
     user: UserPublic
