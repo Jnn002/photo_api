@@ -29,7 +29,7 @@ from app.core.database import async_engine
 from app.core.enums import Status
 from app.core.security import hash_password
 from app.sessions.models import Session  # noqa: F401
-from app.users.models import Permission, Role, User
+from app.users.models import Permission, Role, User, UserRole
 
 # ==================== Permission Definitions ====================
 
@@ -575,9 +575,15 @@ async def create_admin_user(db: AsyncSession, role_map: dict[str, Role]) -> User
         print('❌ ERROR: Admin role not found')
         sys.exit(1)
 
-    admin_user.roles.append(admin_role)
+    # Create UserRole record directly to avoid async issues with .append()
+    user_role = UserRole(
+        user_id=admin_user.id,  # type: ignore
+        role_id=admin_role.id,  # type: ignore
+        assigned_by=admin_user.id,
+    )
+    db.add(user_role)
     await db.commit()
-    await db.refresh(admin_user, ['roles'])
+    await db.refresh(admin_user)
 
     print(f'  ✅ Created admin user: {admin_email}')
     print('  ✅ Assigned role: admin')

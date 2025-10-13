@@ -37,7 +37,7 @@ class UserRole(SQLModel, table=True):
     user_id: int = Field(foreign_key='studio.user.id', primary_key=True)
     role_id: int = Field(foreign_key='studio.role.id', primary_key=True)
     assigned_at: datetime = Field(default_factory=get_current_utc_time)
-    assigned_by: int = Field(foreign_key='studio.user.id')
+    assigned_by: int | None = Field(foreign_key='studio.user.id')
 
     # Relationships
     user: 'User' = Relationship(
