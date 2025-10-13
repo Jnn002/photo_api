@@ -44,6 +44,10 @@ docker compose --env-file docker-compose.env up -d
 # Run database migrations (within virtual environment)
 alembic upgrade head
 
+# Initialize system (creates permissions, roles, and admin user)
+# IMPORTANT: Set ADMIN_EMAIL and ADMIN_PASSWORD in .env first!
+python -m app.scripts.init_system
+
 # Create a new migration (within virtual environment)
 alembic revision --autogenerate -m "description"
 ```
@@ -295,11 +299,50 @@ The app uses **Pydantic Settings** to load configuration from environment variab
 - `DATABASE_URL`: PostgreSQL connection string
 - `REDIS_URL`: Redis connection string
 - `JWT_SECRET`, `JWT_ALGORITHM`: Authentication config
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD`: Initial admin credentials (for system initialization)
 - `PAYMENT_DEADLINE_DAYS`: 5 (business rule)
 - `CHANGES_DEADLINE_DAYS`: 7 (business rule)
 - `DEFAULT_DEPOSIT_PERCENTAGE`: 50 (business rule)
 
 Create a `.env` file for application config and use `docker-compose.env` for Docker services.
+
+## System Initialization
+
+After running database migrations for the first time, you must initialize the system with permissions, roles, and the admin user.
+
+**Prerequisites:**
+1. Database migrations applied: `alembic upgrade head`
+2. Environment variables set in `.env`:
+   - `ADMIN_EMAIL`: Email for the initial admin user (e.g., admin@studio.gt)
+   - `ADMIN_PASSWORD`: Strong password for the admin user
+
+**Run the initialization script:**
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Run initialization
+python -m app.scripts.init_system
+```
+
+**What the script does:**
+1. Creates all system permissions (45+ permissions across all modules)
+2. Creates 5 predefined roles:
+   - `admin`: Full system access
+   - `coordinator`: Session and client management
+   - `photographer`: View and mark assigned sessions
+   - `editor`: Mark sessions as ready for delivery
+   - `user`: Basic role for self-registered users
+3. Associates permissions to roles according to `files/permissions_doc.md`
+4. Creates the initial admin user with the specified email and password
+5. Assigns the `admin` role to the initial user
+
+**The script is idempotent** - you can run it multiple times safely. It will skip existing records and only create missing ones.
+
+**After initialization:**
+- Login at `POST /api/v1/auth/login` with admin credentials
+- Use the admin account to create other users and assign roles
+- Public users can self-register at `POST /api/v1/auth/register` (get `user` role automatically)
 
 ## Database
 

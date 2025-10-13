@@ -11,6 +11,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from ..core.enums import ClientType, Status
+
 
 class ClientCreate(BaseModel):
     """Schema for creating a new client."""
@@ -20,7 +22,7 @@ class ClientCreate(BaseModel):
     primary_phone: str = Field(..., min_length=8, max_length=20)
     secondary_phone: str | None = Field(default=None, max_length=20)
     delivery_address: str | None = None
-    client_type: str = Field(..., pattern='^(Individual|Institutional)$')
+    client_type: ClientType
     notes: str | None = None
 
     @field_validator('full_name', 'primary_phone')
@@ -48,11 +50,9 @@ class ClientUpdate(BaseModel):
     primary_phone: str | None = Field(default=None, min_length=8, max_length=20)
     secondary_phone: str | None = Field(default=None, max_length=20)
     delivery_address: str | None = None
-    client_type: str | None = Field(
-        default=None, pattern='^(Individual|Institutional)$'
-    )
+    client_type: ClientType | None = None
     notes: str | None = None
-    status: str | None = Field(default=None, pattern='^(Active|Inactive)$')
+    status: Status | None = None
 
     @field_validator('full_name', 'primary_phone')
     @classmethod
@@ -74,8 +74,8 @@ class ClientPublic(BaseModel):
     primary_phone: str
     secondary_phone: str | None
     delivery_address: str | None
-    client_type: str
+    client_type: ClientType
     notes: str | None
-    status: str
+    status: Status
     created_at: datetime
     updated_at: datetime

@@ -17,6 +17,8 @@ from sqlmodel import Field, Relationship, SQLModel
 from ..core.enums import Status
 from ..core.time_utils import get_current_utc_time
 
+# Lazy imports to avoid circular dependencies
+# These are imported at the bottom of the file after all classes are defined
 if TYPE_CHECKING:
     from ..catalog.models import Item, Package
     from ..clients.models import Client
@@ -37,10 +39,15 @@ class UserRole(SQLModel, table=True):
     user_id: int = Field(foreign_key='studio.user.id', primary_key=True)
     role_id: int = Field(foreign_key='studio.role.id', primary_key=True)
     assigned_at: datetime = Field(default_factory=get_current_utc_time)
-    assigned_by: int = Field(foreign_key='studio.user.id')
+    assigned_by: int | None = Field(foreign_key='studio.user.id')
 
     # Relationships
-    user: 'User' = Relationship(back_populates='role_links')
+    user: 'User' = Relationship(
+        back_populates='role_links',
+        sa_relationship_kwargs={
+            'foreign_keys': '[UserRole.user_id]',
+        },
+    )
     role: 'Role' = Relationship(back_populates='user_links')
 
 
@@ -55,8 +62,18 @@ class RolePermission(SQLModel, table=True):
     granted_by: int | None = Field(default=None, foreign_key='studio.user.id')
 
     # Relationships
-    role: 'Role' = Relationship(back_populates='permission_links')
-    permission: 'Permission' = Relationship(back_populates='role_links')
+    role: 'Role' = Relationship(
+        back_populates='permission_links',
+        sa_relationship_kwargs={
+            'foreign_keys': '[RolePermission.role_id]',
+        },
+    )
+    permission: 'Permission' = Relationship(
+        back_populates='role_links',
+        sa_relationship_kwargs={
+            'foreign_keys': '[RolePermission.permission_id]',
+        },
+    )
 
 
 class User(SQLModel, table=True):
@@ -78,87 +95,89 @@ class User(SQLModel, table=True):
     created_by: int | None = Field(default=None, foreign_key='studio.user.id')
 
     # Relationships (link models with extra fields)
-    roles: list['Role'] = Relationship(back_populates='users', link_model=UserRole)
-    role_links: list['UserRole'] = Relationship(back_populates='user')
+    # Many-to-many: User <-> Role through UserRole
+    # Note: UserRole has both user_id and assigned_by pointing to User,
+    # so we must specify foreign_keys to avoid ambiguity.
+    # We only want to use user_id and role_id for the many-to-many relationship,
+    # not assigned_by.
+    # The overlaps parameter tells SQLAlchemy that both relationships
+    # write to the same columns, which is expected for many-to-many with link tables.
+    roles: list['Role'] = Relationship(
+        back_populates='users',
+        link_model=UserRole,
+        sa_relationship_kwargs={
+            'foreign_keys': '[UserRole.user_id, UserRole.role_id]',
+            'overlaps': 'user,role',
+        },
+    )
+    role_links: list['UserRole'] = Relationship(
+        back_populates='user',
+        sa_relationship_kwargs={
+            'foreign_keys': '[UserRole.user_id]',
+            'overlaps': 'roles',
+        },
+    )
 
     # Client relationships
     created_clients: list['Client'] = Relationship(
         back_populates='creator',
-        sa_relationship_kwargs={
-            'foreign_keys': '[Client.created_by]',
-        },
     )
 
-    # Session relationships
+    # Session relationships (multiple FKs to User, so we specify which one)
     created_sessions: list['Session'] = Relationship(
         back_populates='creator',
         sa_relationship_kwargs={
-            'foreign_keys': '[Session.created_by]',
+            'foreign_keys': 'Session.created_by',
         },
     )
     sessions_as_editor: list['Session'] = Relationship(
         back_populates='editor',
         sa_relationship_kwargs={
-            'foreign_keys': '[Session.editing_assigned_to]',
+            'foreign_keys': 'Session.editing_assigned_to',
         },
     )
     cancelled_sessions: list['Session'] = Relationship(
         back_populates='canceller',
         sa_relationship_kwargs={
-            'foreign_keys': '[Session.cancelled_by]',
+            'foreign_keys': 'Session.cancelled_by',
         },
     )
 
     # SessionDetail relationships
     created_session_details: list['SessionDetail'] = Relationship(
         back_populates='creator',
-        sa_relationship_kwargs={
-            'foreign_keys': '[SessionDetail.created_by]',
-        },
     )
 
-    # SessionPhotographer relationships
+    # SessionPhotographer relationships (multiple FKs to User)
     photographer_assignments: list['SessionPhotographer'] = Relationship(
         back_populates='photographer',
         sa_relationship_kwargs={
-            'foreign_keys': '[SessionPhotographer.photographer_id]',
+            'foreign_keys': 'SessionPhotographer.photographer_id',
         },
     )
     assigned_photographer_sessions: list['SessionPhotographer'] = Relationship(
         back_populates='assigner',
         sa_relationship_kwargs={
-            'foreign_keys': '[SessionPhotographer.assigned_by]',
+            'foreign_keys': 'SessionPhotographer.assigned_by',
         },
     )
 
     # SessionPayment relationships
     created_payments: list['SessionPayment'] = Relationship(
         back_populates='creator',
-        sa_relationship_kwargs={
-            'foreign_keys': '[SessionPayment.created_by]',
-        },
     )
 
     # SessionStatusHistory relationships
     status_changes: list['SessionStatusHistory'] = Relationship(
         back_populates='changed_by_user',
-        sa_relationship_kwargs={
-            'foreign_keys': '[SessionStatusHistory.changed_by]',
-        },
     )
 
     # Catalog relationships
     created_items: list['Item'] = Relationship(
         back_populates='creator',
-        sa_relationship_kwargs={
-            'foreign_keys': '[Item.created_by]',
-        },
     )
     created_packages: list['Package'] = Relationship(
         back_populates='creator',
-        sa_relationship_kwargs={
-            'foreign_keys': '[Package.created_by]',
-        },
     )
 
 
@@ -178,14 +197,36 @@ class Role(SQLModel, table=True):
     )
 
     # Relationships (link models with extra fields)
-
-    users: list['User'] = Relationship(back_populates='roles', link_model=UserRole)
-    user_links: list['UserRole'] = Relationship(back_populates='role')
-
-    permissions: list['Permission'] = Relationship(
-        back_populates='roles', link_model=RolePermission
+    # Many-to-many: Role <-> User through UserRole
+    users: list['User'] = Relationship(
+        back_populates='roles',
+        link_model=UserRole,
+        sa_relationship_kwargs={
+            'foreign_keys': '[UserRole.user_id, UserRole.role_id]',
+            'overlaps': 'user,role',
+        },
     )
-    permission_links: list['RolePermission'] = Relationship(back_populates='role')
+    user_links: list['UserRole'] = Relationship(
+        back_populates='role',
+        sa_relationship_kwargs={
+            'overlaps': 'users',
+        },
+    )
+
+    # Many-to-many: Role <-> Permission through RolePermission
+    permissions: list['Permission'] = Relationship(
+        back_populates='roles',
+        link_model=RolePermission,
+        sa_relationship_kwargs={
+            'overlaps': 'role,permission',
+        },
+    )
+    permission_links: list['RolePermission'] = Relationship(
+        back_populates='role',
+        sa_relationship_kwargs={
+            'overlaps': 'permissions',
+        },
+    )
 
 
 class Permission(SQLModel, table=True):
@@ -206,7 +247,36 @@ class Permission(SQLModel, table=True):
     )
 
     # Relationships (link models with extra fields)
+    # Many-to-many: Permission <-> Role through RolePermission
     roles: list['Role'] = Relationship(
-        back_populates='permissions', link_model=RolePermission
+        back_populates='permissions',
+        link_model=RolePermission,
+        sa_relationship_kwargs={
+            'overlaps': 'role,permission',
+        },
     )
-    role_links: list['RolePermission'] = Relationship(back_populates='permission')
+    role_links: list['RolePermission'] = Relationship(
+        back_populates='permission',
+        sa_relationship_kwargs={
+            'overlaps': 'roles',
+        },
+    )
+
+
+# Resolve forward references for SQLAlchemy relationships
+# Import at module level to make string annotations work
+def _resolve_imports():
+    """Import related models to resolve forward references."""
+    # Import here to avoid circular imports at module load time
+    from ..catalog.models import Item, Package  # noqa: F401
+    from ..clients.models import Client  # noqa: F401
+    from ..sessions.models import (  # noqa: F401
+        Session,
+        SessionDetail,
+        SessionPayment,
+        SessionPhotographer,
+        SessionStatusHistory,
+    )
+
+
+_resolve_imports()

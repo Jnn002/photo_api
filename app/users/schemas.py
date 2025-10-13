@@ -7,9 +7,12 @@ This module defines Pydantic v2 schemas for user operations:
 - Permission schemas: Granular permissions
 """
 
+import re
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from ..core.enums import Status
 
 # ==================== Permission Schemas ====================
 
@@ -49,7 +52,7 @@ class PermissionUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = None
     module: str | None = Field(default=None, min_length=1, max_length=50)
-    status: str | None = Field(default=None, pattern='^(Active|Inactive)$')
+    status: Status | None = None
 
     @field_validator('code', 'name', 'module')
     @classmethod
@@ -70,7 +73,7 @@ class PermissionPublic(BaseModel):
     name: str
     description: str | None
     module: str
-    status: str
+    status: Status
     created_at: datetime
     updated_at: datetime
 
@@ -98,7 +101,7 @@ class RoleUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=50)
     description: str | None = None
-    status: str | None = Field(default=None, pattern='^(Active|Inactive)$')
+    status: Status | None = None
 
     @field_validator('name')
     @classmethod
@@ -117,7 +120,7 @@ class RolePublic(BaseModel):
     id: int
     name: str
     description: str | None
-    status: str
+    status: Status
     created_at: datetime
     updated_at: datetime
 
@@ -150,17 +153,51 @@ class UserCreate(BaseModel):
     @field_validator('password')
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        """Ensure password meets minimum requirements."""
+        """
+        Validate password meets comprehensive security requirements.
+
+        Requirements:
+        - At least 8 characters long
+        - At least one digit
+        - At least one lowercase letter
+        - At least one uppercase letter
+        - At least one special character
+        - Not a common weak password
+        """
+        errors = []
+
         if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
+            errors.append('Password must be at least 8 characters long')
 
-        # Check for at least one digit
         if not any(char.isdigit() for char in v):
-            raise ValueError('Password must contain at least one digit')
+            errors.append('Password must contain at least one digit')
 
-        # Check for at least one letter
-        if not any(char.isalpha() for char in v):
-            raise ValueError('Password must contain at least one letter')
+        if not any(char.islower() for char in v):
+            errors.append('Password must contain at least one lowercase letter')
+
+        if not any(char.isupper() for char in v):
+            errors.append('Password must contain at least one uppercase letter')
+
+        # Check for special characters
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;\'`~]', v):
+            errors.append('Password must contain at least one special character')
+
+        # Check for common weak passwords
+        common_passwords = [
+            'password',
+            'password123',
+            '12345678',
+            'qwerty',
+            'abc123',
+            'password1',
+            '123456789',
+            'admin123',
+        ]
+        if v.lower() in common_passwords:
+            errors.append('Password is too common and easily guessable')
+
+        if errors:
+            raise ValueError('; '.join(errors))
 
         return v
 
@@ -171,7 +208,7 @@ class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=100)
     email: EmailStr | None = Field(default=None, max_length=100)
     phone: str | None = Field(default=None, max_length=20)
-    status: str | None = Field(default=None, pattern='^(Active|Inactive)$')
+    status: Status | None = None
 
     @field_validator('full_name')
     @classmethod
@@ -191,15 +228,51 @@ class UserPasswordUpdate(BaseModel):
     @field_validator('new_password')
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        """Ensure password meets minimum requirements."""
+        """
+        Validate password meets comprehensive security requirements.
+
+        Requirements:
+        - At least 8 characters long
+        - At least one digit
+        - At least one lowercase letter
+        - At least one uppercase letter
+        - At least one special character
+        - Not a common weak password
+        """
+        errors = []
+
         if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
+            errors.append('Password must be at least 8 characters long')
 
         if not any(char.isdigit() for char in v):
-            raise ValueError('Password must contain at least one digit')
+            errors.append('Password must contain at least one digit')
 
-        if not any(char.isalpha() for char in v):
-            raise ValueError('Password must contain at least one letter')
+        if not any(char.islower() for char in v):
+            errors.append('Password must contain at least one lowercase letter')
+
+        if not any(char.isupper() for char in v):
+            errors.append('Password must contain at least one uppercase letter')
+
+        # Check for special characters
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;\'`~]', v):
+            errors.append('Password must contain at least one special character')
+
+        # Check for common weak passwords
+        common_passwords = [
+            'password',
+            'password123',
+            '12345678',
+            'qwerty',
+            'abc123',
+            'password1',
+            '123456789',
+            'admin123',
+        ]
+        if v.lower() in common_passwords:
+            errors.append('Password is too common and easily guessable')
+
+        if errors:
+            raise ValueError('; '.join(errors))
 
         return v
 
@@ -213,7 +286,7 @@ class UserPublic(BaseModel):
     full_name: str
     email: str
     phone: str | None
-    status: str
+    status: Status
     created_at: datetime
     updated_at: datetime
 
@@ -279,6 +352,7 @@ class TokenResponse(BaseModel):
     """Response schema for successful authentication."""
 
     access_token: str
+    refresh_token: str
     token_type: str = 'bearer'
     expires_in: int  # seconds
     user: UserPublic

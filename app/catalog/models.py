@@ -61,11 +61,18 @@ class Item(SQLModel, table=True):
     packages: list['Package'] = Relationship(
         back_populates='items',
         link_model=PackageItem,
+        sa_relationship_kwargs={
+            'overlaps': 'item,package',
+        },
     )
-    package_links: list[PackageItem] = Relationship(back_populates='item')
+    package_links: list[PackageItem] = Relationship(
+        back_populates='item',
+        sa_relationship_kwargs={
+            'overlaps': 'packages',
+        },
+    )
     creator: 'User' = Relationship(
         back_populates='created_items',
-        sa_relationship_kwargs={'foreign_keys': '[Item.created_by]'},
     )
 
 
@@ -91,12 +98,20 @@ class Package(SQLModel, table=True):
 
     # Relationships
     items: list['Item'] = Relationship(
-        back_populates='packages', link_model=PackageItem
+        back_populates='packages',
+        link_model=PackageItem,
+        sa_relationship_kwargs={
+            'overlaps': 'item,package',
+        },
     )
-    item_links: list[PackageItem] = Relationship(back_populates='package')
+    item_links: list[PackageItem] = Relationship(
+        back_populates='package',
+        sa_relationship_kwargs={
+            'overlaps': 'items',
+        },
+    )
     creator: 'User' = Relationship(
         back_populates='created_packages',
-        sa_relationship_kwargs={'foreign_keys': '[Package.created_by]'},
     )
 
 

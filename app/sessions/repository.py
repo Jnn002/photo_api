@@ -5,7 +5,7 @@ This module provides data access methods for Session-related entities
 using SQLModel's native async methods.
 """
 
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy.orm import selectinload
@@ -13,6 +13,7 @@ from sqlmodel import col, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.enums import PaymentType, SessionStatus
+from app.core.time_utils import get_current_utc_time
 from app.sessions.models import (
     Session as SessionModel,
 )
@@ -47,7 +48,7 @@ class SessionRepository:
             select(SessionModel)
             .where(SessionModel.id == session_id)
             .options(
-                selectinload(SessionModel.session_details)  # type: ignore
+                selectinload(SessionModel.details)  # type: ignore
             )
         )
         result = await self.db.exec(statement)
@@ -222,7 +223,7 @@ class SessionDetailRepository:
     async def mark_delivered(self, detail: SessionDetail) -> SessionDetail:
         """Mark a session detail as delivered."""
         detail.is_delivered = True
-        detail.delivered_at = datetime.utcnow()
+        detail.delivered_at = get_current_utc_time()
         self.db.add(detail)
         await self.db.flush()
         await self.db.refresh(detail)
@@ -361,7 +362,7 @@ class SessionPhotographerRepository:
     ) -> SessionPhotographer:
         """Mark photographer as attended."""
         assignment.attended = True
-        assignment.attended_at = datetime.utcnow()
+        assignment.attended_at = get_current_utc_time()
         self.db.add(assignment)
         await self.db.flush()
         await self.db.refresh(assignment)

@@ -1,0 +1,19 @@
+meta {
+  name: ListUsers
+  type: http
+  seq: 4
+}
+
+get {
+  url: http://127.0.0.1:8000/api/v1/users/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBzdHVkaW8uY29tIiwiZXhwIjoxNzYwMzM5NzA2LCJpYXQiOjE3NjAzMzc5MDYsImp0aSI6ImY4YzRhYjEyLWZmY2EtNDRmZi04MjQ1LTNiMzE5ZDVjNGFmZCIsImlzcyI6InBob3RvZ3JhcGh5LXN0dWRpby1hcGkiLCJhdWQiOiJwaG90b2dyYXBoeS1zdHVkaW8tY2xpZW50IiwidHlwZSI6ImFjY2VzcyJ9.i3jVHSRUGzuaS4uD0DIGc1VCS-c57YTlOZtvQpO5kmE
+}
+
+settings {
+  encodeUrl: true
+}

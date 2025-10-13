@@ -14,6 +14,8 @@ exd.md
 .vscode/mcp.json
 test_schemas.py
 test_repositories.py
+z_descartados/
+alembic/versions/
 
 #env
 *.env

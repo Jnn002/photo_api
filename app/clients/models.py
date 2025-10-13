@@ -43,5 +43,4 @@ class Client(SQLModel, table=True):
     sessions: list['Session'] = Relationship(back_populates='client')
     creator: 'User' = Relationship(
         back_populates='created_clients',
-        sa_relationship_kwargs={'foreign_keys': '[Client.created_by]'},
     )
