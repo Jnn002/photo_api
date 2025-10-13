@@ -17,6 +17,8 @@ from sqlmodel import Field, Relationship, SQLModel
 from ..core.enums import Status
 from ..core.time_utils import get_current_utc_time
 
+# Lazy imports to avoid circular dependencies
+# These are imported at the bottom of the file after all classes are defined
 if TYPE_CHECKING:
     from ..catalog.models import Item, Package
     from ..clients.models import Client
@@ -119,81 +121,63 @@ class User(SQLModel, table=True):
     # Client relationships
     created_clients: list['Client'] = Relationship(
         back_populates='creator',
-        sa_relationship_kwargs={
-            'foreign_keys': '[Client.created_by]',
-        },
     )
 
-    # Session relationships
+    # Session relationships (multiple FKs to User, so we specify which one)
     created_sessions: list['Session'] = Relationship(
         back_populates='creator',
         sa_relationship_kwargs={
-            'foreign_keys': '[Session.created_by]',
+            'foreign_keys': 'Session.created_by',
         },
     )
     sessions_as_editor: list['Session'] = Relationship(
         back_populates='editor',
         sa_relationship_kwargs={
-            'foreign_keys': '[Session.editing_assigned_to]',
+            'foreign_keys': 'Session.editing_assigned_to',
         },
     )
     cancelled_sessions: list['Session'] = Relationship(
         back_populates='canceller',
         sa_relationship_kwargs={
-            'foreign_keys': '[Session.cancelled_by]',
+            'foreign_keys': 'Session.cancelled_by',
         },
     )
 
     # SessionDetail relationships
     created_session_details: list['SessionDetail'] = Relationship(
         back_populates='creator',
-        sa_relationship_kwargs={
-            'foreign_keys': '[SessionDetail.created_by]',
-        },
     )
 
-    # SessionPhotographer relationships
+    # SessionPhotographer relationships (multiple FKs to User)
     photographer_assignments: list['SessionPhotographer'] = Relationship(
         back_populates='photographer',
         sa_relationship_kwargs={
-            'foreign_keys': '[SessionPhotographer.photographer_id]',
+            'foreign_keys': 'SessionPhotographer.photographer_id',
         },
     )
     assigned_photographer_sessions: list['SessionPhotographer'] = Relationship(
         back_populates='assigner',
         sa_relationship_kwargs={
-            'foreign_keys': '[SessionPhotographer.assigned_by]',
+            'foreign_keys': 'SessionPhotographer.assigned_by',
         },
     )
 
     # SessionPayment relationships
     created_payments: list['SessionPayment'] = Relationship(
         back_populates='creator',
-        sa_relationship_kwargs={
-            'foreign_keys': '[SessionPayment.created_by]',
-        },
     )
 
     # SessionStatusHistory relationships
     status_changes: list['SessionStatusHistory'] = Relationship(
         back_populates='changed_by_user',
-        sa_relationship_kwargs={
-            'foreign_keys': '[SessionStatusHistory.changed_by]',
-        },
     )
 
     # Catalog relationships
     created_items: list['Item'] = Relationship(
         back_populates='creator',
-        sa_relationship_kwargs={
-            'foreign_keys': '[Item.created_by]',
-        },
     )
     created_packages: list['Package'] = Relationship(
         back_populates='creator',
-        sa_relationship_kwargs={
-            'foreign_keys': '[Package.created_by]',
-        },
     )
 
 
@@ -277,3 +261,22 @@ class Permission(SQLModel, table=True):
             'overlaps': 'roles',
         },
     )
+
+
+# Resolve forward references for SQLAlchemy relationships
+# Import at module level to make string annotations work
+def _resolve_imports():
+    """Import related models to resolve forward references."""
+    # Import here to avoid circular imports at module load time
+    from ..catalog.models import Item, Package  # noqa: F401
+    from ..clients.models import Client  # noqa: F401
+    from ..sessions.models import (  # noqa: F401
+        Session,
+        SessionDetail,
+        SessionPayment,
+        SessionPhotographer,
+        SessionStatusHistory,
+    )
+
+
+_resolve_imports()

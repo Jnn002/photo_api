@@ -109,19 +109,18 @@ class Session(SQLModel, table=True):
     status_history: list['SessionStatusHistory'] = Relationship(
         back_populates='session'
     )
-    # TODO: CHECK THIS RELATIONSHIP
-    # User relationships
+    # User relationships (multiple FKs to User)
     editor: 'User' = Relationship(
         back_populates='sessions_as_editor',
-        sa_relationship_kwargs={'foreign_keys': '[Session.editing_assigned_to]'},
+        sa_relationship_kwargs={'foreign_keys': 'Session.editing_assigned_to'},
     )
     creator: 'User' = Relationship(
         back_populates='created_sessions',
-        sa_relationship_kwargs={'foreign_keys': '[Session.created_by]'},
+        sa_relationship_kwargs={'foreign_keys': 'Session.created_by'},
     )
     canceller: 'User' = Relationship(
         back_populates='cancelled_sessions',
-        sa_relationship_kwargs={'foreign_keys': '[Session.cancelled_by]'},
+        sa_relationship_kwargs={'foreign_keys': 'Session.cancelled_by'},
     )
 
 
@@ -165,7 +164,6 @@ class SessionDetail(SQLModel, table=True):
     session: 'Session' = Relationship(back_populates='details')
     creator: 'User' = Relationship(
         back_populates='created_session_details',
-        sa_relationship_kwargs={'foreign_keys': '[SessionDetail.created_by]'},
     )
 
 
@@ -193,13 +191,13 @@ class SessionPhotographer(SQLModel, table=True):
     photographer: 'User' = Relationship(
         back_populates='photographer_assignments',
         sa_relationship_kwargs={
-            'foreign_keys': '[SessionPhotographer.photographer_id]',
+            'foreign_keys': 'SessionPhotographer.photographer_id',
         },
     )
     assigner: 'User' = Relationship(
         back_populates='assigned_photographer_sessions',
         sa_relationship_kwargs={
-            'foreign_keys': '[SessionPhotographer.assigned_by]',
+            'foreign_keys': 'SessionPhotographer.assigned_by',
         },
     )
 
@@ -230,7 +228,6 @@ class SessionPayment(SQLModel, table=True):
     session: 'Session' = Relationship(back_populates='payments')
     creator: 'User' = Relationship(
         back_populates='created_payments',
-        sa_relationship_kwargs={'foreign_keys': '[SessionPayment.created_by]'},
     )
 
 
@@ -258,5 +255,4 @@ class SessionStatusHistory(SQLModel, table=True):
     session: 'Session' = Relationship(back_populates='status_history')
     changed_by_user: 'User' = Relationship(
         back_populates='status_changes',
-        sa_relationship_kwargs={'foreign_keys': '[SessionStatusHistory.changed_by]'},
     )

@@ -73,7 +73,6 @@ class Item(SQLModel, table=True):
     )
     creator: 'User' = Relationship(
         back_populates='created_items',
-        sa_relationship_kwargs={'foreign_keys': '[Item.created_by]'},
     )
 
 
@@ -113,7 +112,6 @@ class Package(SQLModel, table=True):
     )
     creator: 'User' = Relationship(
         back_populates='created_packages',
-        sa_relationship_kwargs={'foreign_keys': '[Package.created_by]'},
     )
 
 
