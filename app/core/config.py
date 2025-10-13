@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     MAIL_FROM: str = ''
     MAIL_FROM_NAME: str = ''
 
+    # Admin Configuration (for system initialization)
+    ADMIN_EMAIL: str = ''
+    ADMIN_PASSWORD: str = ''
+
     # Business Rules Configuration
     PAYMENT_DEADLINE_DAYS: int = 5
     CHANGES_DEADLINE_DAYS: int = 7
