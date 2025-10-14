@@ -1,0 +1,32 @@
+meta {
+  name: List Clients
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{back}}/clients?active_only=true&limit=50&offset=0
+  body: none
+  auth: none
+}
+
+params:query {
+  active_only: true
+  limit: 50
+  offset: 0
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  
+  test("should return array of clients", function() {
+    const data = res.body;
+    expect(Array.isArray(data)).to.be.true;
+  });
+}

@@ -20,6 +20,7 @@ from .exceptions import (
     DuplicateCodeException,
     DuplicateEmailException,
     DuplicateNameException,
+    InactiveClientException,
     InactiveUserException,
     InsufficientBalanceException,
     InsufficientPermissionsException,
@@ -150,6 +151,15 @@ def register_all_errors(app: FastAPI) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             error_code='inactive_user',
             message='User account is inactive',
+        ),
+    )
+
+    app.add_exception_handler(
+        InactiveClientException,
+        create_exception_handler(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error_code='inactive_client',
+            message='Client account is inactive',
         ),
     )
 

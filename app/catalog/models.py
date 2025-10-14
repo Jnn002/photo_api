@@ -62,13 +62,13 @@ class Item(SQLModel, table=True):
         back_populates='items',
         link_model=PackageItem,
         sa_relationship_kwargs={
-            'overlaps': 'item,package',
+            'overlaps': 'item,package,package_links,item_links',
         },
     )
     package_links: list[PackageItem] = Relationship(
         back_populates='item',
         sa_relationship_kwargs={
-            'overlaps': 'packages',
+            'overlaps': 'packages,package,items',
         },
     )
     creator: 'User' = Relationship(
@@ -101,13 +101,13 @@ class Package(SQLModel, table=True):
         back_populates='packages',
         link_model=PackageItem,
         sa_relationship_kwargs={
-            'overlaps': 'item,package',
+            'overlaps': 'item,package,item_links,package_links',
         },
     )
     item_links: list[PackageItem] = Relationship(
         back_populates='package',
         sa_relationship_kwargs={
-            'overlaps': 'items',
+            'overlaps': 'items,item,packages',
         },
     )
     creator: 'User' = Relationship(

@@ -1,0 +1,31 @@
+meta {
+  name: Reactivate Client
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{back}}/clients/:client_id/reactivate
+  body: none
+  auth: none
+}
+
+params:path {
+  client_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  
+  test("should return reactivated client", function() {
+    const data = res.body;
+    expect(data).to.have.property('status');
+    expect(data.status).to.equal('Active');
+  });
+}

@@ -15,7 +15,7 @@ from .config import settings
 # Create async engine
 async_engine: AsyncEngine = create_async_engine(
     url=settings.DATABASE_URL,
-    echo=settings.DEBUG,
+    echo=True,  # Set to True only for debugging SQL queries
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,  # Verify connections before using

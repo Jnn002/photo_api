@@ -65,6 +65,12 @@ class InactiveUserException(StudioException):
     pass
 
 
+class InactiveClientException(StudioException):
+    """Client account is inactive or disabled."""
+
+    pass
+
+
 # ==================== Resource Not Found Exceptions ====================
 
 

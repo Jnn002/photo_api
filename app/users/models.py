@@ -107,14 +107,14 @@ class User(SQLModel, table=True):
         link_model=UserRole,
         sa_relationship_kwargs={
             'foreign_keys': '[UserRole.user_id, UserRole.role_id]',
-            'overlaps': 'user,role',
+            'overlaps': 'user,role,role_links,users,user_links',
         },
     )
     role_links: list['UserRole'] = Relationship(
         back_populates='user',
         sa_relationship_kwargs={
             'foreign_keys': '[UserRole.user_id]',
-            'overlaps': 'roles',
+            'overlaps': 'roles,role,users',
         },
     )
 
@@ -203,13 +203,13 @@ class Role(SQLModel, table=True):
         link_model=UserRole,
         sa_relationship_kwargs={
             'foreign_keys': '[UserRole.user_id, UserRole.role_id]',
-            'overlaps': 'user,role',
+            'overlaps': 'user,role,role_links,user_links',
         },
     )
     user_links: list['UserRole'] = Relationship(
         back_populates='role',
         sa_relationship_kwargs={
-            'overlaps': 'users',
+            'overlaps': 'users,user,roles',
         },
     )
 
@@ -218,13 +218,13 @@ class Role(SQLModel, table=True):
         back_populates='roles',
         link_model=RolePermission,
         sa_relationship_kwargs={
-            'overlaps': 'role,permission',
+            'overlaps': 'role,permission,permission_links,role_links',
         },
     )
     permission_links: list['RolePermission'] = Relationship(
         back_populates='role',
         sa_relationship_kwargs={
-            'overlaps': 'permissions',
+            'overlaps': 'permissions,permission,roles',
         },
     )
 
@@ -252,13 +252,13 @@ class Permission(SQLModel, table=True):
         back_populates='permissions',
         link_model=RolePermission,
         sa_relationship_kwargs={
-            'overlaps': 'role,permission',
+            'overlaps': 'role,permission,permission_links,role_links',
         },
     )
     role_links: list['RolePermission'] = Relationship(
         back_populates='permission',
         sa_relationship_kwargs={
-            'overlaps': 'roles',
+            'overlaps': 'roles,role,permissions',
         },
     )
 
