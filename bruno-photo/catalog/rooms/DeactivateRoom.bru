@@ -1,0 +1,31 @@
+meta {
+  name: Deactivate Room
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{back}}/rooms/:room_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  room_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return deactivated room", function() {
+    const data = res.body;
+    expect(data).to.have.property('status');
+    expect(data.status).to.equal('Inactive');
+  });
+}

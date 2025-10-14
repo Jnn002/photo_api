@@ -1,0 +1,34 @@
+meta {
+  name: Filter Items By Type
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{back}}/items?item_type=Printed Photo&limit=100
+  body: none
+  auth: inherit
+}
+
+params:query {
+  item_type: Printed Photo
+  limit: 100
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  
+  test("should return filtered items", function() {
+    const data = res.body;
+    expect(Array.isArray(data)).to.be.true;
+    if (data.length > 0) {
+      expect(data[0].item_type).to.equal('Photo');
+    }
+  });
+}

@@ -6,8 +6,21 @@ meta {
 
 post {
   url: {{back}}/permissions
-  body: none
+  body: json
   auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "code": "test.read",
+    "name": "Creación de permiso lectura test",
+    "description": "descripción 2",
+    "module": "test"
+  }
 }
 
 settings {

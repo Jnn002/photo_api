@@ -1,0 +1,32 @@
+meta {
+  name: Get Room By ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{back}}/rooms/:room_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  room_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return room data", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('name');
+    expect(data).to.have.property('capacity');
+  });
+}

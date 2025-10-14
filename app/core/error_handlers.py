@@ -21,6 +21,7 @@ from .exceptions import (
     DuplicateEmailException,
     DuplicateNameException,
     InactiveClientException,
+    InactiveResourceException,
     InactiveUserException,
     InsufficientBalanceException,
     InsufficientPermissionsException,
@@ -160,6 +161,15 @@ def register_all_errors(app: FastAPI) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             error_code='inactive_client',
             message='Client account is inactive',
+        ),
+    )
+
+    app.add_exception_handler(
+        InactiveResourceException,
+        create_exception_handler(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error_code='inactive_resource',
+            message='Resource is inactive or unavailable',
         ),
     )
 

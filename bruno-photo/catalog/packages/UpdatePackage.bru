@@ -1,0 +1,38 @@
+meta {
+  name: Update Package
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{back}}/packages/:package_id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  package_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "base_price": "550.00",
+    "description": "Sesión básica de 1 hora con 25 fotos digitales"
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return updated package", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data.base_price).to.equal('550.00');
+  });
+}
