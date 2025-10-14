@@ -1,0 +1,25 @@
+meta {
+  name: ListRoles
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{back}}/roles?active_only=true&limit=50&offset=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  active_only: true
+  limit: 50
+  offset: 0
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+}

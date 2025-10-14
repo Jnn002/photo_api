@@ -101,12 +101,12 @@ async def refresh_token(
     # Get user and generate new tokens
     service = UserService(db)
     user_repo = service.user_repo
-    user = await user_repo.find_by_email(email)
+    user = await user_repo.find_by_email(email)  # type: ignore
 
     if not user:
         from app.core.exceptions import UserNotFoundException
 
-        raise UserNotFoundException(email)
+        raise UserNotFoundException(email)  # type: ignore
 
     # Check if user is active
     from app.core.enums import Status
@@ -294,7 +294,7 @@ async def get_current_user_info(
     **Authentication required:** Yes (any authenticated user)
     """
     service = UserService(db)
-    return await service.get_user_with_roles(current_user.id)
+    return await service.get_user_with_roles(current_user.id)  # type: ignore
 
 
 @users_router.get(
@@ -352,7 +352,7 @@ async def update_user(
     **Permissions required:** user.edit
     """
     service = UserService(db)
-    return await service.update_user(user_id, data, updated_by=current_user.id)
+    return await service.update_user(user_id, data, updated_by=current_user.id)  # type: ignore
 
 
 @users_router.delete(
@@ -379,7 +379,7 @@ async def deactivate_user(
     **Permissions required:** user.delete
     """
     service = UserService(db)
-    return await service.deactivate_user(user_id, deactivated_by=current_user.id)
+    return await service.deactivate_user(user_id, deactivated_by=current_user.id)  # type: ignore
 
 
 @users_router.put(
@@ -405,7 +405,7 @@ async def reactivate_user(
     **Permissions required:** user.edit
     """
     service = UserService(db)
-    return await service.reactivate_user(user_id, reactivated_by=current_user.id)
+    return await service.reactivate_user(user_id, reactivated_by=current_user.id)  # type: ignore
 
 
 @users_router.patch(
@@ -482,7 +482,7 @@ async def list_user_roles(
 
     **Authorization:**
     - Own roles: Any authenticated user can view their own roles
-    - Other users: Requires user.read permission
+    - Other users: Requires user.view permission
     """
     # Check if user is viewing their own roles or has permission
     is_self = current_user.id == user_id
@@ -490,7 +490,7 @@ async def list_user_roles(
     if not is_self:
         from app.core.permissions import check_user_permission
 
-        has_permission = await check_user_permission(current_user, 'user.read', db)
+        has_permission = await check_user_permission(current_user, 'user.view', db)
         if not has_permission:
             from app.core.exceptions import InsufficientPermissionsException
 
@@ -530,7 +530,9 @@ async def assign_role(
     """
     service = UserService(db)
     return await service.assign_role_to_user(
-        user_id, role_id, assigned_by=current_user.id
+        user_id,
+        role_id,
+        assigned_by=current_user.id,  # type: ignore
     )
 
 
@@ -558,7 +560,9 @@ async def remove_role(
     """
     service = UserService(db)
     return await service.remove_role_from_user(
-        user_id, role_id, removed_by=current_user.id
+        user_id,
+        role_id,
+        removed_by=current_user.id,  # type: ignore
     )
 
 
