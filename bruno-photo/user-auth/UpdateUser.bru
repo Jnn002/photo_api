@@ -1,0 +1,30 @@
+meta {
+  name: UpdateUser
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{back}}/users/:update_user
+  body: json
+  auth: inherit
+}
+
+params:path {
+  update_user: 10
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "full_name": "Jhon User",
+    "status": "Active"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

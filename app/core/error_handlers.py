@@ -20,9 +20,11 @@ from .exceptions import (
     DuplicateCodeException,
     DuplicateEmailException,
     DuplicateNameException,
+    InactiveClientException,
     InactiveUserException,
     InsufficientBalanceException,
     InsufficientPermissionsException,
+    InvaiidPasswordFormatException,
     InvalidCredentialsException,
     InvalidSessionTypeException,
     InvalidStatusTransitionException,
@@ -90,6 +92,15 @@ def register_all_errors(app: FastAPI) -> None:
     # ==================== Authentication & Authorization ====================
 
     app.add_exception_handler(
+        InvaiidPasswordFormatException,
+        create_exception_handler(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error_code='invalid_password_format',
+            message='Password does not meet complexity requirements',
+        ),
+    )
+
+    app.add_exception_handler(
         UnauthorizedException,
         create_exception_handler(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -143,10 +154,21 @@ def register_all_errors(app: FastAPI) -> None:
         ),
     )
 
+    app.add_exception_handler(
+        InactiveClientException,
+        create_exception_handler(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error_code='inactive_client',
+            message='Client account is inactive',
+        ),
+    )
+
     # ==================== Resource Not Found ====================
 
     @app.exception_handler(ResourceNotFoundException)
-    async def resource_not_found_handler(request: Request, exc: ResourceNotFoundException):
+    async def resource_not_found_handler(
+        request: Request, exc: ResourceNotFoundException
+    ):
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
@@ -207,7 +229,9 @@ def register_all_errors(app: FastAPI) -> None:
         )
 
     @app.exception_handler(ResourceConflictException)
-    async def resource_conflict_handler(request: Request, exc: ResourceConflictException):
+    async def resource_conflict_handler(
+        request: Request, exc: ResourceConflictException
+    ):
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
@@ -304,7 +328,9 @@ def register_all_errors(app: FastAPI) -> None:
         )
 
     @app.exception_handler(RoomNotAvailableException)
-    async def room_not_available_handler(request: Request, exc: RoomNotAvailableException):
+    async def room_not_available_handler(
+        request: Request, exc: RoomNotAvailableException
+    ):
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
@@ -420,7 +446,9 @@ def register_all_errors(app: FastAPI) -> None:
     # ==================== Validation Errors ====================
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ):
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={

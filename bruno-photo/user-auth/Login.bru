@@ -1,11 +1,11 @@
 meta {
   name: Login
   type: http
-  seq: 2
+  seq: 1
 }
 
 post {
-  url: http://127.0.0.1:8000/api/v1/auth/login
+  url: {{back}}/auth/login
   body: json
   auth: inherit
 }
@@ -15,6 +15,12 @@ body:json {
     "email": "admin@studio.com",
     "password": "Admin1_admin"
   }
+}
+
+script:post-response {
+  bru.setVar("token", res.body.access_token);
+  bru.setVar("refresh_token", res.body.refresh_token);
+  
 }
 
 settings {

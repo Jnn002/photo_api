@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "name": "bruno-client",
+  "name": "bruno-photo",
   "type": "collection",
   "ignore": [
     "node_modules",

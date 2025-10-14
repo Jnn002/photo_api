@@ -23,6 +23,12 @@ class StudioException(Exception):
 # ==================== Authentication & Authorization Exceptions ====================
 
 
+class InvaiidPasswordFormatException(StudioException):
+    """Password does not meet complexity requirements."""
+
+    pass
+
+
 class UnauthorizedException(StudioException):
     """User is not authenticated."""
 
@@ -55,6 +61,12 @@ class InsufficientPermissionsException(StudioException):
 
 class InactiveUserException(StudioException):
     """User account is inactive or disabled."""
+
+    pass
+
+
+class InactiveClientException(StudioException):
+    """Client account is inactive or disabled."""
 
     pass
 
@@ -261,4 +273,6 @@ class PackageItemsEmptyException(BusinessValidationException):
 
     def __init__(self, package_id: int):
         self.package_id = package_id
-        super().__init__(f'Package {package_id} has no items and cannot be added to session')
+        super().__init__(
+            f'Package {package_id} has no items and cannot be added to session'
+        )

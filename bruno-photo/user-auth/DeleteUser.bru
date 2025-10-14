@@ -1,0 +1,23 @@
+meta {
+  name: DeleteUser
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{back}}/users/:delete_user
+  body: none
+  auth: inherit
+}
+
+params:path {
+  delete_user: 10
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+}

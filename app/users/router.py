@@ -152,6 +152,13 @@ async def logout(
     3. Middleware should check blacklist on each request
     """
     # TODO: Implement Redis token blacklist
+    """     jti = token_details['jti']
+
+    await add_jti_to_blocklist(jti)
+    return JSONResponse(
+        content={'message': 'You have logged out'}, status_code=status.HTTP_200_OK 
+    )
+        """
     # blacklist_service = TokenBlacklist()
     # await blacklist_service.revoke_token(jti, ttl_seconds)
     return None
@@ -223,9 +230,6 @@ async def create_user(
     return await service.create_user(data, created_by=current_user.id)
 
 
-# ...existing code...
-
-
 @auth_router.post(
     '/register',
     response_model=UserPublic,
@@ -270,9 +274,6 @@ async def register_user(
     return UserPublic.model_validate(user)
 
 
-# ...existing code...
-
-
 @users_router.get(
     '/me',
     response_model=UserWithRoles,
@@ -303,10 +304,11 @@ async def get_current_user_info(
     summary='Get user by ID',
     description='Get user information by ID with roles. Requires user.read permission.',
 )
+# todo: VERIFY USER READ PERMISSION LATER
 async def get_user(
     user_id: int,
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('user.read'))],
+    current_user: Annotated[User, Depends(require_permission('user.list'))],
 ) -> User:
     """
     Get user by ID with their roles.
@@ -436,6 +438,7 @@ async def change_password(
     - Own password: Any authenticated user can change their own password
     - Other users: Requires user.edit permission
     """
+    # TODO: VERIFY PASSWORD VALIDATION => ERROR 500 INTERNAL SERVER PROBLEM
     service = UserService(db)
 
     # Check if user is changing their own password or has permission

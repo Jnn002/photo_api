@@ -1,0 +1,40 @@
+meta {
+  name: Create Client
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{back}}/clients
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "full_name": "Dayana",
+    "email": "Dayana.gonzalez@example.com",
+    "primary_phone": "50231234567",
+    "secondary_phone": "50298765432",
+    "delivery_address": "5a Avenida 12-34, Zona 10, Guatemala City",
+    "client_type": "Individual",
+    "notes": "Cliente preferente, solicita entregas en horario de oficina"
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.status).to.equal(201);
+  });
+  
+  test("should return client data", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('full_name');
+    expect(data.email).to.equal('maria.gonzalez@example.com');
+  });
+}

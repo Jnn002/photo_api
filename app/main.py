@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.clients.router import router as clients_router
 from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.error_handlers import register_all_errors
@@ -24,7 +25,7 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     print('🚀 Starting Photography Studio API...')
-    print(f'📍 Environment: {settings.ENVIRONMENT}')
+    # print(f'📍 Environment: {settings.ENVIRONMENT}')
     print('  Database: Connected')
 
     # Initialize database (optional - primarily for testing)
@@ -100,3 +101,4 @@ async def root():
 
 
 app.include_router(users_router, prefix='/api/v1')
+app.include_router(clients_router, prefix='/api/v1')

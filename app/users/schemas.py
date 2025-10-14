@@ -10,9 +10,11 @@ This module defines Pydantic v2 schemas for user operations:
 import re
 from datetime import datetime
 
+from asyncpg import InvalidPasswordError
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from ..core.enums import Status
+from ..core.error_handlers import InvaiidPasswordFormatException
 
 # ==================== Permission Schemas ====================
 
@@ -167,20 +169,30 @@ class UserCreate(BaseModel):
         errors = []
 
         if len(v) < 8:
-            errors.append('Password must be at least 8 characters long')
+            raise InvaiidPasswordFormatException(
+                'Password must be at least 8 characters long'
+            )
 
         if not any(char.isdigit() for char in v):
-            errors.append('Password must contain at least one digit')
+            raise InvaiidPasswordFormatException(
+                'Password must contain at least one digit'
+            )
 
         if not any(char.islower() for char in v):
-            errors.append('Password must contain at least one lowercase letter')
+            raise InvaiidPasswordFormatException(
+                'Password must contain at least one lowercase letter'
+            )
 
         if not any(char.isupper() for char in v):
-            errors.append('Password must contain at least one uppercase letter')
+            raise InvaiidPasswordFormatException(
+                'Password must contain at least one uppercase letter'
+            )
 
         # Check for special characters
         if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;\'`~]', v):
-            errors.append('Password must contain at least one special character')
+            raise InvaiidPasswordFormatException(
+                'Password must contain at least one special character'
+            )
 
         # Check for common weak passwords
         common_passwords = [
@@ -194,7 +206,9 @@ class UserCreate(BaseModel):
             'admin123',
         ]
         if v.lower() in common_passwords:
-            errors.append('Password is too common and easily guessable')
+            raise InvaiidPasswordFormatException(
+                'Password is too common and easily guessable'
+            )
 
         if errors:
             raise ValueError('; '.join(errors))
@@ -242,20 +256,30 @@ class UserPasswordUpdate(BaseModel):
         errors = []
 
         if len(v) < 8:
-            errors.append('Password must be at least 8 characters long')
+            raise InvaiidPasswordFormatException(
+                'Password must be at least 8 characters long'
+            )
 
         if not any(char.isdigit() for char in v):
-            errors.append('Password must contain at least one digit')
+            raise InvaiidPasswordFormatException(
+                'Password must contain at least one digit'
+            )
 
         if not any(char.islower() for char in v):
-            errors.append('Password must contain at least one lowercase letter')
+            raise InvaiidPasswordFormatException(
+                'Password must contain at least one lowercase letter'
+            )
 
         if not any(char.isupper() for char in v):
-            errors.append('Password must contain at least one uppercase letter')
+            raise InvaiidPasswordFormatException(
+                'Password must contain at least one uppercase letter'
+            )
 
         # Check for special characters
         if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;\'`~]', v):
-            errors.append('Password must contain at least one special character')
+            raise InvaiidPasswordFormatException(
+                'Password must contain at least one special character'
+            )
 
         # Check for common weak passwords
         common_passwords = [
@@ -269,7 +293,7 @@ class UserPasswordUpdate(BaseModel):
             'admin123',
         ]
         if v.lower() in common_passwords:
-            errors.append('Password is too common and easily guessable')
+            raise InvalidPasswordError('Password is too common and easily guessable')
 
         if errors:
             raise ValueError('; '.join(errors))
