@@ -1,0 +1,39 @@
+meta {
+  name: Update Room
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{back}}/rooms/:room_id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  room_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "hourly_rate": "175.00",
+    "capacity": 12
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return updated room", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data.hourly_rate).to.equal('175.00');
+    expect(data.capacity).to.equal(12);
+  });
+}

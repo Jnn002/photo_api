@@ -1,0 +1,31 @@
+meta {
+  name: Reactivate Item
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{back}}/items/:item_id/reactivate
+  body: none
+  auth: inherit
+}
+
+params:path {
+  item_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return reactivated item", function() {
+    const data = res.body;
+    expect(data).to.have.property('status');
+    expect(data.status).to.equal('Active');
+  });
+}

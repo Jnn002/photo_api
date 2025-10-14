@@ -1,0 +1,38 @@
+meta {
+  name: Create Room
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{back}}/rooms
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "Sala Principal",
+    "description": "Sala principal con fondo blanco y equipo profesional",
+    "capacity": 10,
+    "hourly_rate": "150.00"
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.status).to.equal(201);
+  });
+
+  test("should return room data", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('name');
+    expect(data.name).to.equal('Sala Principal');
+    expect(data.status).to.equal('Active');
+  });
+}

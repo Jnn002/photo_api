@@ -1,0 +1,33 @@
+meta {
+  name: Get Package By ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{back}}/packages/:package_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  package_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return package with items", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('code');
+    expect(data).to.have.property('items');
+    expect(Array.isArray(data.items)).to.be.true;
+  });
+}

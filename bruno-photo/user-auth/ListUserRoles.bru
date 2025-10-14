@@ -1,0 +1,23 @@
+meta {
+  name: ListUserRoles
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{back}}/users/:user_id/roles
+  body: none
+  auth: inherit
+}
+
+params:path {
+  user_id: 10
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,30 @@
+meta {
+  name: Get Package Items
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{back}}/packages/:package_id/items
+  body: none
+  auth: inherit
+}
+
+params:path {
+  package_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return array of package items", function() {
+    const data = res.body;
+    expect(Array.isArray(data)).to.be.true;
+  });
+}

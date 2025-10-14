@@ -1,0 +1,41 @@
+meta {
+  name: Create Item
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{back}}/items
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "code": "PHOTO-8X10",
+    "name": "Fotografía 8x10",
+    "description": "Fotografía impresa formato 8x10 pulgadas",
+    "item_type": "Printed Photo",
+    "unit_price": "25.00",
+    "unit_measure": "Unit",
+    "default_quantity": 1
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.status).to.equal(201);
+  });
+  
+  test("should return item data", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('code');
+    expect(data.code).to.equal('PHOTO-8X10');
+    expect(data.status).to.equal('Active');
+  });
+}

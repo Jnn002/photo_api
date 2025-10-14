@@ -1,0 +1,38 @@
+meta {
+  name: Get Session Status History
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{back}}/sessions/1/history
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return array of status changes", function() {
+    const data = res.body;
+    expect(data).to.be.an('array');
+    expect(data.length).to.be.greaterThan(0);
+  });
+
+  test("each status change should have correct structure", function() {
+    const data = res.body;
+    data.forEach(history => {
+      expect(history).to.have.property('id');
+      expect(history).to.have.property('session_id');
+      expect(history).to.have.property('to_status');
+      expect(history).to.have.property('changed_at');
+      expect(history).to.have.property('changed_by');
+    });
+  });
+}

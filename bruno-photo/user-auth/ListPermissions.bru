@@ -1,0 +1,24 @@
+meta {
+  name: ListPermissions
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{back}}/permissions?module=client&active_only=true
+  body: none
+  auth: inherit
+}
+
+params:query {
+  module: client
+  active_only: true
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,38 @@
+meta {
+  name: Update Item
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{back}}/items/:item_id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  item_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "unit_price": "30.00",
+    "description": "Fotografía impresa formato 8x10 pulgadas - Alta calidad"
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return updated item", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data.unit_price).to.equal('30.00');
+  });
+}

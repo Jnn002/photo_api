@@ -1,0 +1,26 @@
+meta {
+  name: Remove Item From Package
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{back}}/packages/:package_id/items/:item_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  package_id: 1
+  item_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 204", function() {
+    expect(res.status).to.equal(204);
+  });
+}

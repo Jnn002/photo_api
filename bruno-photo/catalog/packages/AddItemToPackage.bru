@@ -1,0 +1,41 @@
+meta {
+  name: Add Item To Package
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{back}}/packages/:package_id/items
+  body: json
+  auth: inherit
+}
+
+params:path {
+  package_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "item_id": 1,
+    "quantity": 20,
+    "display_order": 1
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.status).to.equal(201);
+  });
+
+  test("should return package item detail", function() {
+    const data = res.body;
+    expect(data).to.have.property('item_id');
+    expect(data).to.have.property('item_code');
+    expect(data).to.have.property('quantity');
+    expect(data.quantity).to.equal(20);
+  });
+}

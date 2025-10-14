@@ -1,17 +1,17 @@
 meta {
-  name: Get Client by ID
+  name: Get Item By ID
   type: http
   seq: 3
 }
 
 get {
-  url: {{back}}/clients/:cliente_id
+  url: {{back}}/items/:item_id
   body: none
-  auth: none
+  auth: inherit
 }
 
 params:path {
-  cliente_id: 1
+  item_id: 1
 }
 
 headers {
@@ -22,11 +22,11 @@ tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-  
-  test("should return client data", function() {
+
+  test("should return item data", function() {
     const data = res.body;
     expect(data).to.have.property('id');
-    expect(data).to.have.property('full_name');
-    expect(data).to.have.property('email');
+    expect(data).to.have.property('code');
+    expect(data).to.have.property('name');
   });
 }

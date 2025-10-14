@@ -1,0 +1,31 @@
+meta {
+  name: Deactivate Package
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{back}}/packages/:package_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  package_id: 1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return deactivated package", function() {
+    const data = res.body;
+    expect(data).to.have.property('status');
+    expect(data.status).to.equal('Inactive');
+  });
+}

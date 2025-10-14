@@ -71,6 +71,12 @@ class InactiveClientException(StudioException):
     pass
 
 
+class InactiveResourceException(StudioException):
+    """Resource is inactive or disabled."""
+
+    pass
+
+
 # ==================== Resource Not Found Exceptions ====================
 
 
@@ -137,6 +143,13 @@ class PermissionNotFoundException(ResourceNotFoundException):
 
     def __init__(self, identifier: str | int):
         super().__init__('Permission', identifier)
+
+
+class PackageItemNotFoundException(ResourceNotFoundException):
+    """Package-Item relationship not found."""
+
+    def __init__(self, package_id: int, item_id: int):
+        super().__init__('PackageItem', f'package={package_id}, item={item_id}')
 
 
 # ==================== Conflict/Duplicate Exceptions ====================

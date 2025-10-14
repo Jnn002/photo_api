@@ -1,0 +1,42 @@
+meta {
+  name: Record Payment
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{back}}/sessions/1/payments
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "session_id": 1,
+    "payment_type": "Deposit",
+    "payment_method": "Transfer",
+    "amount": "250.00",
+    "transaction_reference": "TRX-2025-001",
+    "payment_date": "2025-10-15",
+    "notes": "Depósito inicial 50%"
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.status).to.equal(201);
+  });
+
+  test("should return payment data", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('session_id');
+    expect(data.session_id).to.equal(1);
+    expect(data.payment_type).to.equal('Deposit');
+    expect(data.amount).to.equal('250.00');
+  });
+}
