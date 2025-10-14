@@ -1,0 +1,23 @@
+meta {
+  name: ReactiveUser
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{back}}/users/:reactive_user/reactivate
+  body: none
+  auth: inherit
+}
+
+params:path {
+  reactive_user: 10
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+}

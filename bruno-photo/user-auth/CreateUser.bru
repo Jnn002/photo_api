@@ -1,0 +1,28 @@
+meta {
+  name: CreateUser
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{back}}/users
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "full_name": "User Password",
+    "email": "user@photo.com",
+    "password": "Admin1_admin",
+    "phone": "10101010"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

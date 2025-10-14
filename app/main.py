@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     print('🚀 Starting Photography Studio API...')
-    print(f'📍 Environment: {settings.ENVIRONMENT}')
+    # print(f'📍 Environment: {settings.ENVIRONMENT}')
     print('  Database: Connected')
 
     # Initialize database (optional - primarily for testing)
