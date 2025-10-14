@@ -14,6 +14,7 @@ from app.clients.router import router as clients_router
 from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.error_handlers import register_all_errors
+from app.sessions.router import router as sessions_router
 from app.users.router import router as users_router
 
 
@@ -104,3 +105,4 @@ async def root():
 app.include_router(users_router, prefix='/api/v1')
 app.include_router(clients_router, prefix='/api/v1')
 app.include_router(catalog_router, prefix='/api/v1')
+app.include_router(sessions_router, prefix='/api/v1')

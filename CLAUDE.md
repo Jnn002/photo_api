@@ -459,11 +459,13 @@ pytest -k "test_session_creation"
 - ✅ Virtual environment with UV
 - ✅ Schemas (Pydantic DTOs)
 - ✅ Repositories (data access layer)
+- ✅ Authentication & RBAC
 
-**To Implement:**
+**implementation in Progress:**
 - ⏳ Services (business logic)
 - ⏳ Routers (API endpoints)
-- ⏳ Authentication & RBAC
+
+**To Implement:**
 - ⏳ Background tasks (Celery)
 - ⏳ Email notifications
 - ⏳ Comprehensive tests

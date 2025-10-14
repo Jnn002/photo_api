@@ -1,0 +1,39 @@
+meta {
+  name: Assign Photographer
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{back}}/sessions/1/photographers
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "session_id": 1,
+    "photographer_id": 2,
+    "role": "Lead"
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.status).to.equal(201);
+  });
+
+  test("should return photographer assignment", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('session_id');
+    expect(data.session_id).to.equal(1);
+    expect(data.photographer_id).to.equal(2);
+    expect(data.role).to.equal('Lead');
+    expect(data.attended).to.equal(false);
+  });
+}

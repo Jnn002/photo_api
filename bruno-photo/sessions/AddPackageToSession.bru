@@ -1,0 +1,37 @@
+meta {
+  name: Add Package To Session (Explosion)
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{back}}/sessions/1/details/packages/1
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.status).to.equal(201);
+  });
+
+  test("should return array of session details", function() {
+    const data = res.body;
+    expect(data).to.be.an('array');
+    expect(data.length).to.be.greaterThan(0);
+  });
+
+  test("each detail should have correct structure", function() {
+    const data = res.body;
+    data.forEach(detail => {
+      expect(detail).to.have.property('id');
+      expect(detail).to.have.property('line_type');
+      expect(detail).to.have.property('reference_type');
+      expect(detail.reference_type).to.equal('Package');
+    });
+  });
+}

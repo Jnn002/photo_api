@@ -1,0 +1,49 @@
+meta {
+  name: Create Session
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{back}}/sessions
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "client_id": 1,
+    "session_type": "External",
+    "session_date": "2025-11-18",
+    "session_time": "10:00",
+    "estimated_duration_hours": 2,
+    "location": "zona 1",
+    "client_requirements": "Fotos familiares, ambiente natural"
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.status).to.equal(201);
+  });
+  
+  test("should return session data", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('client_id');
+    expect(data.client_id).to.equal(1);
+    expect(data.status).to.equal('Request');
+    expect(data.session_type).to.equal('Studio');
+  });
+  
+  test("should have financial fields initialized", function() {
+    const data = res.body;
+    expect(data).to.have.property('total_amount');
+    expect(data).to.have.property('deposit_amount');
+    expect(data).to.have.property('paid_amount');
+  });
+}

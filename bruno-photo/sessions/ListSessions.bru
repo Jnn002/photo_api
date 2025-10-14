@@ -1,0 +1,25 @@
+meta {
+  name: List Sessions
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{back}}/sessions
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  
+  test("should return array", function() {
+    expect(res.body).to.be.an('array');
+  });
+}

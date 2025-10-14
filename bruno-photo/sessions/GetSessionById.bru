@@ -1,0 +1,30 @@
+meta {
+  name: Get Session By ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{back}}/sessions/1
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return session detail", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('client_id');
+    expect(data).to.have.property('status');
+    expect(data).to.have.property('session_type');
+    expect(data).to.have.property('session_date');
+  });
+}

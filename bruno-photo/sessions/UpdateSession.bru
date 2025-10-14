@@ -1,0 +1,37 @@
+meta {
+  name: Update Session
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{back}}/sessions/2
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "session_time": "14:00",
+    "estimated_duration_hours": 3,
+    "client_requirements": "Actualizado: Fotos familiares con mascotas",
+    "internal_notes": "Cliente solicitó cambio de hora"
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  
+  test("should return updated session", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data.session_time).to.equal('14:00');
+    expect(data.estimated_duration_hours).to.equal(3);
+  });
+}

@@ -1,0 +1,36 @@
+meta {
+  name: Transition To Pre-scheduled
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{back}}/sessions/1/transition
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "to_status": "Confirmed",
+    "reason": "Cliente confirmó fecha y hora",
+    "notes": "Pendiente agregar items al presupuesto"
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  
+  test("should transition to Pre-scheduled", function() {
+    const data = res.body;
+    expect(data.status).to.equal('Pre-scheduled');
+    expect(data).to.have.property('payment_deadline');
+    expect(data).to.have.property('changes_deadline');
+  });
+}

@@ -1,0 +1,34 @@
+meta {
+  name: Transition To Assigned
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{back}}/sessions/1/transition
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "to_status": "Assigned",
+    "reason": "Fotógrafo asignado",
+    "notes": "Fotógrafo principal asignado"
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should transition to Assigned", function() {
+    const data = res.body;
+    expect(data.status).to.equal('Assigned');
+  });
+}

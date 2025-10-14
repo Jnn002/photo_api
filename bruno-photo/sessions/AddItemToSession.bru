@@ -1,0 +1,32 @@
+meta {
+  name: Add Item To Session
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{back}}/sessions/1/details/items/1?quantity=5
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.status).to.equal(201);
+  });
+
+  test("should return session detail", function() {
+    const data = res.body;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('session_id');
+    expect(data).to.have.property('line_type');
+    expect(data.line_type).to.equal('Item');
+    expect(data.quantity).to.equal(5);
+    expect(data).to.have.property('unit_price');
+    expect(data).to.have.property('line_subtotal');
+  });
+}
