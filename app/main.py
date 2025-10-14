@@ -14,6 +14,7 @@ from app.clients.router import router as clients_router
 from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.error_handlers import register_all_errors
+from app.core.redis import close_redis_connection
 from app.sessions.router import router as sessions_router
 from app.users.router import router as users_router
 
@@ -42,6 +43,8 @@ async def lifespan(app: FastAPI):
     print('🛑 Shutting down Photography Studio API...')
     await close_db()
     print('✅ Database connections closed')
+    await close_redis_connection()
+    print('✅ Redis connections closed')
 
 
 # Create FastAPI application

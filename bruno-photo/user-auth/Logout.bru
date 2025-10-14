@@ -1,17 +1,13 @@
 meta {
-  name: Me
+  name: Logout
   type: http
-  seq: 6
+  seq: 3
 }
 
 get {
-  url: {{back}}/users/me
+  url: {{back}}/logout
   body: none
   auth: inherit
-}
-
-headers {
-  Authorization: Bearer {{token}}
 }
 
 settings {

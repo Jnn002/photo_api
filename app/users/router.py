@@ -15,9 +15,14 @@ from fastapi import APIRouter, Body, Depends, Query, status
 
 from app.core.dependencies import CurrentActiveUser, SessionDep
 from app.core.permissions import require_permission
-from app.core.security import create_access_token, verify_refresh_token
+from app.core.security import (
+    create_access_token,
+    oauth2_scheme,
+    verify_refresh_token,
+)
 from app.users.models import Role, User
 from app.users.schemas import (
+    LogoutRequest,
     PermissionCreate,
     PermissionPublic,
     RoleCreate,
@@ -93,10 +98,31 @@ async def refresh_token(
     **Returns:**
     - New access_token and refresh_token pair
     - Updated user information
+
+    **Security:**
+    - Validates that the refresh token is not in the blocklist (not revoked)
+    - Checks that the user is still active
     """
+    from app.core.enums import Status
+    from app.core.exceptions import (
+        InactiveUserException,
+        InvalidTokenException,
+        UserNotFoundException,
+    )
+    from app.core.redis import token_in_blocklist
+    from app.core.security import create_refresh_token
+
     # Verify the refresh token
     payload = verify_refresh_token(refresh_token)
     email = payload.get('sub')
+    jti = payload.get('jti')
+
+    if not jti:
+        raise InvalidTokenException('Refresh token missing JTI claim')
+
+    # Check if refresh token is in blocklist (revoked)
+    if await token_in_blocklist(jti):
+        raise InvalidTokenException('Refresh token has been revoked')
 
     # Get user and generate new tokens
     service = UserService(db)
@@ -104,21 +130,13 @@ async def refresh_token(
     user = await user_repo.find_by_email(email)  # type: ignore
 
     if not user:
-        from app.core.exceptions import UserNotFoundException
-
         raise UserNotFoundException(email)  # type: ignore
 
     # Check if user is active
-    from app.core.enums import Status
-
     if user.status != Status.ACTIVE:
-        from app.core.exceptions import InactiveUserException
-
         raise InactiveUserException(f'User {user.email} is inactive')
 
     # Generate new token pair
-    from app.core.security import create_refresh_token
-
     new_access_token = create_access_token(data={'sub': user.email})
     new_refresh_token = create_refresh_token(data={'sub': user.email})
 
@@ -134,33 +152,78 @@ async def refresh_token(
     '/logout',
     status_code=status.HTTP_204_NO_CONTENT,
     summary='User logout',
-    description='Logout current user. In production, this should revoke tokens via Redis blacklist.',
+    description='Logout current user by revoking both access and refresh tokens.',
 )
 async def logout(
+    logout_data: LogoutRequest,
     current_user: CurrentActiveUser,
+    token: Annotated[str, Depends(oauth2_scheme)],
 ) -> None:
     """
-    Logout current user.
+    Logout current user by invalidating both access and refresh tokens.
 
-    TODO: Implement token revocation with Redis blacklist.
-    Currently this is a placeholder that returns success.
-    Client should discard tokens on logout.
+    This endpoint adds both the access token (from Authorization header) and
+    the refresh token (from request body) to Redis blocklist. Once added,
+    these tokens cannot be used for authentication or token refresh.
 
-    In production:
-    1. Extract jti from current token
-    2. Add jti to Redis blacklist with TTL = remaining token lifetime
-    3. Middleware should check blacklist on each request
+    **How it works:**
+    1. Extracts JTI from current access token (from Authorization header)
+    2. Extracts JTI from provided refresh token (from request body)
+    3. Calculates remaining TTL for both tokens
+    4. Adds both JTIs to Redis blocklist with appropriate TTL
+    5. Redis automatically removes expired tokens from blocklist
+
+    **Required:**
+    - refresh_token: The refresh token to revoke (from request body)
+    - Authorization header: Bearer token (access token) - automatically extracted
+
+    **Security:**
+    - User must be authenticated (valid access token required)
+    - Both tokens are immediately invalidated
+    - Subsequent requests with these tokens will fail with 401 Unauthorized
+
+    **Example request:**
+    ```json
+    {
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+    ```
     """
-    # TODO: Implement Redis token blacklist
-    """     jti = token_details['jti']
+    from datetime import datetime, timezone
 
-    await add_jti_to_blocklist(jti)
-    return JSONResponse(
-        content={'message': 'You have logged out'}, status_code=status.HTTP_200_OK 
+    from app.core.exceptions import InvalidTokenException
+    from app.core.redis import revoke_token_pair
+    from app.core.security import decode_access_token
+
+    # Extract JTI from access token (current request token)
+    access_payload = decode_access_token(token)
+    access_jti = access_payload.get('jti')
+    access_exp = access_payload.get('exp')
+
+    if not access_jti or not access_exp:
+        raise InvalidTokenException('Invalid access token structure')
+
+    # Extract JTI from refresh token
+    refresh_payload = verify_refresh_token(logout_data.refresh_token)
+    refresh_jti = refresh_payload.get('jti')
+    refresh_exp = refresh_payload.get('exp')
+
+    if not refresh_jti or not refresh_exp:
+        raise InvalidTokenException('Invalid refresh token structure')
+
+    # Calculate remaining TTL for both tokens
+    now = datetime.now(timezone.utc).timestamp()
+    access_ttl = max(int(access_exp - now), 0)
+    refresh_ttl = max(int(refresh_exp - now), 0)
+
+    # Add both tokens to blocklist
+    await revoke_token_pair(
+        access_jti=access_jti,
+        refresh_jti=refresh_jti,
+        access_ttl=access_ttl,
+        refresh_ttl=refresh_ttl,
     )
-        """
-    # blacklist_service = TokenBlacklist()
-    # await blacklist_service.revoke_token(jti, ttl_seconds)
+
     return None
 
 
