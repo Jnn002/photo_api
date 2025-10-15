@@ -773,12 +773,19 @@ async def assign_photographer(
     """
     Assign a photographer to a session.
 
+    **Important:** This automatically transitions the session from CONFIRMED to ASSIGNED status.
+
     **Path parameters:**
     - session_id: Session ID
 
     **Request body:**
     - photographer_id: User ID of photographer
     - role: Role (Lead/Assistant) - optional
+
+    **Business logic:**
+    - Creates photographer assignment
+    - If session is in CONFIRMED status, automatically transitions to ASSIGNED
+    - Records status change in history
 
     **Business rules:**
     - Photographer availability is validated (not double-booked)

@@ -1,7 +1,7 @@
 meta {
   name: Filter Sessions By Status
   type: http
-  seq: 16
+  seq: 18
 }
 
 get {
@@ -18,11 +18,11 @@ tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("should return array of sessions", function() {
     expect(res.body).to.be.an('array');
   });
-
+  
   test("all sessions should have Confirmed status", function() {
     const data = res.body;
     data.forEach(session => {

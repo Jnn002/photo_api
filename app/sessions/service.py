@@ -935,7 +935,11 @@ class SessionPhotographerService:
         self, data: SessionPhotographerAssign, assigned_by: int
     ) -> SessionPhotographer:
         """
-        Assign a photographer to a session.
+        Assign a photographer to a session and auto-transition to ASSIGNED.
+
+        When a photographer is assigned to a CONFIRMED session:
+        - Creates photographer assignment record
+        - Automatically transitions session from CONFIRMED to ASSIGNED
 
         Validates:
         - Session exists
@@ -967,6 +971,21 @@ class SessionPhotographerService:
         )
 
         assignment = await self.repo.create(assignment)
+        await self.db.flush()
+
+        # Auto-transition to ASSIGNED if session is CONFIRMED
+        if session.status == SessionStatus.CONFIRMED:
+            from app.sessions.service import SessionService
+
+            session_service = SessionService(self.db)
+            await session_service.transition_status(
+                session_id=data.session_id,
+                to_status=SessionStatus.ASSIGNED,
+                changed_by=assigned_by,
+                reason='Photographer assigned to session',
+                notes=f'Photographer ID {data.photographer_id} assigned for photography',
+            )
+
         await self.db.commit()
         await self.db.refresh(assignment)
 

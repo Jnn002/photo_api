@@ -1,7 +1,7 @@
 meta {
   name: Cancel Session
   type: http
-  seq: 15
+  seq: 17
 }
 
 post {
@@ -26,7 +26,7 @@ tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("should transition to Canceled", function() {
     const data = res.body;
     expect(data.status).to.equal('Canceled');
