@@ -1101,6 +1101,39 @@ class SessionPhotographerService:
 
         return assignment
 
+    async def mark_my_attendance(
+        self, session_id: int, photographer_id: int, marked_by: int, notes: str | None = None
+    ) -> SessionPhotographer:
+        """
+        Mark photographer attendance for the current user (simplified endpoint).
+
+        This method is designed for photographers to mark their own attendance
+        without needing to know their assignment_id.
+
+        Validates:
+        - Session exists
+        - Photographer is assigned to this session
+
+        Automatically transitions session to ATTENDED status.
+        """
+        from app.core.exceptions import PhotographerNotAssignedException
+
+        # Validate session exists
+        session = await self.session_repo.get_by_id(session_id)
+        if not session:
+            raise SessionNotFoundException(session_id)
+
+        # Find the photographer's assignment for this session
+        assignment = await self.repo.get_by_session_and_photographer(
+            session_id, photographer_id
+        )
+
+        if not assignment:
+            raise PhotographerNotAssignedException(photographer_id, session_id)
+
+        # Delegate to existing mark_attended method
+        return await self.mark_attended(assignment.id, marked_by, notes)
+
     async def remove_assignment(self, assignment_id: int) -> None:
         """Remove photographer assignment."""
         await self.repo.remove_assignment(assignment_id)

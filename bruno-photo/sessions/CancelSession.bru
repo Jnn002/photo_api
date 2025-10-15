@@ -5,9 +5,13 @@ meta {
 }
 
 post {
-  url: {{back}}/sessions/2/cancel
+  url: {{back}}/sessions/:session_id/cancel
   body: json
   auth: inherit
+}
+
+params:path {
+  session_id: {{session_id}}
 }
 
 headers {

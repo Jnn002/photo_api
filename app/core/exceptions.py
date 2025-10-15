@@ -302,3 +302,14 @@ class PackageItemsEmptyException(BusinessValidationException):
         super().__init__(
             f'Package {package_id} has no items and cannot be added to session'
         )
+
+
+class PhotographerNotAssignedException(BusinessValidationException):
+    """Photographer is not assigned to the specified session."""
+
+    def __init__(self, photographer_id: int, session_id: int):
+        self.photographer_id = photographer_id
+        self.session_id = session_id
+        super().__init__(
+            f'Photographer {photographer_id} is not assigned to session {session_id}'
+        )

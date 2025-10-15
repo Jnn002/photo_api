@@ -18,12 +18,17 @@ body:json {
   {
     "client_id": 1,
     "session_type": "Studio",
-    "session_date": "2025-12-25",
+    "session_date": "2025-12-26",
     "session_time": "11:00",
     "estimated_duration_hours": 2,
     "room_id": 1,
     "client_requirements": "TEST"
   }
+}
+
+script:post-response {
+  bru.setVar("session_id", res.body.id);
+  
 }
 
 tests {

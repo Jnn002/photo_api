@@ -302,6 +302,17 @@ class SessionPhotographerRepository:
         """Get photographer assignment by ID."""
         return await self.db.get(SessionPhotographer, assignment_id)
 
+    async def get_by_session_and_photographer(
+        self, session_id: int, photographer_id: int
+    ) -> SessionPhotographer | None:
+        """Get photographer assignment by session and photographer IDs."""
+        statement = select(SessionPhotographer).where(
+            SessionPhotographer.session_id == session_id,
+            SessionPhotographer.photographer_id == photographer_id,
+        )
+        result = await self.db.exec(statement)
+        return result.first()
+
     async def list_by_session(self, session_id: int) -> list[SessionPhotographer]:
         """List all photographer assignments for a session."""
         statement = (

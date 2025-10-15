@@ -860,6 +860,60 @@ async def mark_photographer_attended(
     )
 
 
+@sessions_router.patch(
+    '/{session_id}/my-attendance',
+    response_model=SessionPhotographerPublic,
+    status_code=status.HTTP_200_OK,
+    summary='Mark my attendance (Photographer - Simplified)',
+    description='Mark attendance for current photographer without needing assignment_id. Requires session.mark-attended permission.',
+)
+async def mark_my_attendance(
+    session_id: int,
+    data: SessionPhotographerUpdate,
+    db: SessionDep,
+    current_user: Annotated[User, Depends(require_permission('session.mark-attended'))],
+) -> SessionPhotographer:
+    """
+    Mark attendance for the current photographer (simplified endpoint).
+
+    **Simplified endpoint for photographers** - only requires session_id.
+    The backend automatically finds the photographer's assignment using the authenticated user.
+
+    **Important:** This automatically transitions the session from ASSIGNED to ATTENDED status.
+
+    **Path parameters:**
+    - session_id: Session ID
+
+    **Request body:**
+    - attended: True to mark as attended
+    - notes: Session notes (optional)
+
+    **Business logic:**
+    - Finds photographer assignment for current user
+    - Marks the photographer as attended
+    - If session is in ASSIGNED status, automatically transitions to ATTENDED
+    - Records status change in history
+
+    **Permissions required:** session.mark-attended
+
+    **Use case:**
+    - Photographer completes a photography session
+    - Frontend only needs session_id (from /sessions/my-assignments list)
+    - Photographer marks attendance with a single call
+
+    **Error cases:**
+    - 404: Photographer is not assigned to this session
+    - 404: Session not found
+    """
+    service = SessionPhotographerService(db)
+    return await service.mark_my_attendance(
+        session_id=session_id,
+        photographer_id=current_user.id,  # type: ignore
+        marked_by=current_user.id,  # type: ignore
+        notes=data.notes,
+    )
+
+
 @sessions_router.delete(
     '/{session_id}/photographers/{assignment_id}',
     status_code=status.HTTP_204_NO_CONTENT,
