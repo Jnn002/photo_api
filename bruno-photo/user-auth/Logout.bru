@@ -4,10 +4,20 @@ meta {
   seq: 3
 }
 
-get {
-  url: {{back}}/logout
-  body: none
+post {
+  url: {{back}}/auth/logout
+  body: json
   auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "refresh_token": "{{refresh_token}}"
+  }
 }
 
 settings {

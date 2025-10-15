@@ -20,9 +20,8 @@ headers {
 
 body:json {
   {
-    "item_id": 1,
-    "quantity": 20,
-    "display_order": 1
+    "item_id": 3,
+    "quantity": 2
   }
 }
 
@@ -30,7 +29,7 @@ tests {
   test("should return 201", function() {
     expect(res.status).to.equal(201);
   });
-
+  
   test("should return package item detail", function() {
     const data = res.body;
     expect(data).to.have.property('item_id');

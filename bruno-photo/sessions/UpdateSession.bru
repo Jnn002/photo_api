@@ -5,9 +5,13 @@ meta {
 }
 
 patch {
-  url: {{back}}/sessions/2
+  url: {{back}}/sessions/:session_id
   body: json
   auth: inherit
+}
+
+params:path {
+  session_id: 5
 }
 
 headers {
@@ -16,7 +20,7 @@ headers {
 
 body:json {
   {
-    "session_time": "14:00",
+    "session_time": "15:00",
     "estimated_duration_hours": 3,
     "client_requirements": "Actualizado: Fotos familiares con mascotas",
     "internal_notes": "Cliente solicitó cambio de hora"

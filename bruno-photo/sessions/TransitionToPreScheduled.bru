@@ -5,9 +5,13 @@ meta {
 }
 
 post {
-  url: {{back}}/sessions/1/transition
+  url: {{back}}/sessions/:session_id/transition
   body: json
   auth: inherit
+}
+
+params:path {
+  session_id: 5
 }
 
 headers {
@@ -17,8 +21,8 @@ headers {
 body:json {
   {
     "to_status": "Confirmed",
-    "reason": "Cliente confirmó fecha y hora",
-    "notes": "Pendiente agregar items al presupuesto"
+    "reason": "He atendio",
+    "notes": "Pendiente asignar fotografos"
   }
 }
 

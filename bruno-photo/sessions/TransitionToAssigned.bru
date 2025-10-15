@@ -5,9 +5,13 @@ meta {
 }
 
 post {
-  url: {{back}}/sessions/1/transition
+  url: {{back}}/sessions/:session_id/transition
   body: json
   auth: inherit
+}
+
+params:path {
+  session_id: 5
 }
 
 headers {
@@ -16,7 +20,7 @@ headers {
 
 body:json {
   {
-    "to_status": "Assigned",
+    "to_status": "Completed",
     "reason": "Fotógrafo asignado",
     "notes": "Fotógrafo principal asignado"
   }
@@ -26,7 +30,7 @@ tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("should transition to Assigned", function() {
     const data = res.body;
     expect(data.status).to.equal('Assigned');

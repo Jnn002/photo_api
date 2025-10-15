@@ -5,9 +5,13 @@ meta {
 }
 
 get {
-  url: {{back}}/sessions/1
+  url: {{back}}/sessions/:session_id
   body: none
   auth: inherit
+}
+
+params:path {
+  session_id: 5
 }
 
 headers {
@@ -18,7 +22,7 @@ tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("should return session detail", function() {
     const data = res.body;
     expect(data).to.have.property('id');

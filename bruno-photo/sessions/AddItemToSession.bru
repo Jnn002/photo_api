@@ -5,9 +5,18 @@ meta {
 }
 
 post {
-  url: {{back}}/sessions/1/details/items/1?quantity=5
+  url: {{back}}/sessions/:session_id/details/items/:item_id?quantity=2
   body: none
   auth: inherit
+}
+
+params:query {
+  quantity: 2
+}
+
+params:path {
+  item_id: 2
+  session_id: 5
 }
 
 headers {
@@ -18,7 +27,7 @@ tests {
   test("should return 201", function() {
     expect(res.status).to.equal(201);
   });
-
+  
   test("should return session detail", function() {
     const data = res.body;
     expect(data).to.have.property('id');
