@@ -226,6 +226,30 @@ class ClientService:
 
         return client
 
+    async def count_clients(
+        self,
+        active_only: bool = False,
+        client_type: ClientType | None = None,
+        search: str | None = None,
+    ) -> int:
+        """
+        Count clients matching filters.
+
+        Used for pagination metadata. Should mirror the filtering logic
+        of list_clients method.
+
+        Args:
+            active_only: If True, only count active clients
+            client_type: Filter by client type (Individual/Institutional)
+            search: Search by name (case-insensitive partial match)
+
+        Returns:
+            Total count of clients matching filters
+        """
+        return await self.repo.count_clients(
+            active_only=active_only, client_type=client_type, search=search
+        )
+
     async def find_by_email(self, email: str) -> Client | None:
         """
         Find client by email address.

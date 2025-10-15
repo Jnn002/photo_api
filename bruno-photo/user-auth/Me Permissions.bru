@@ -1,18 +1,13 @@
 meta {
-  name: AssignRole
+  name: Me Permissions
   type: http
-  seq: 14
+  seq: 7
 }
 
-post {
-  url: {{back}}/users/:user_id/roles/:role_id
+get {
+  url: {{back}}/users/me/permissions
   body: none
   auth: inherit
-}
-
-params:path {
-  role_id: 2
-  user_id: 12
 }
 
 headers {

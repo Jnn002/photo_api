@@ -5,14 +5,14 @@ meta {
 }
 
 get {
-  url: {{back}}/packages?session_type=Studio&limit=100
+  url: {{back}}/packages?session_type=Studio&limit=50
   body: none
   auth: inherit
 }
 
 params:query {
   session_type: Studio
-  limit: 100
+  limit: 50
 }
 
 headers {
@@ -24,8 +24,19 @@ tests {
     expect(res.status).to.equal(200);
   });
 
+  test("should return paginated response", function() {
+    const data = res.body;
+    expect(data).to.have.property('items');
+    expect(data).to.have.property('total');
+    expect(Array.isArray(data.items)).to.be.true;
+  });
+
   test("should return filtered packages", function() {
     const data = res.body;
-    expect(Array.isArray(data)).to.be.true;
+    if (data.items.length > 0) {
+      // Should return Studio or Both packages
+      const validTypes = ['Studio', 'Both'];
+      expect(validTypes).to.include(data.items[0].session_type);
+    }
   });
 }

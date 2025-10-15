@@ -103,6 +103,23 @@ class ItemRepository:
         result = await self.db.exec(statement)
         return result.first() is not None
 
+    async def count_items(
+        self, active_only: bool = False, item_type: ItemType | None = None
+    ) -> int:
+        """Count items matching filters."""
+        from sqlalchemy import func
+
+        statement = select(func.count(Item.id))
+
+        if item_type:
+            statement = statement.where(Item.item_type == item_type)
+            statement = statement.where(Item.status == Status.ACTIVE)
+        elif active_only:
+            statement = statement.where(Item.status == Status.ACTIVE)
+
+        result = await self.db.exec(statement)
+        return result.one()
+
 
 # ==================== Package Repository ====================
 
@@ -228,6 +245,26 @@ class PackageRepository:
         result = await self.db.exec(statement)
         return list(result.all())
 
+    async def count_packages(
+        self, active_only: bool = False, session_type: SessionType | None = None
+    ) -> int:
+        """Count packages matching filters."""
+        from sqlalchemy import func
+
+        statement = select(func.count(Package.id))
+
+        if session_type:
+            statement = statement.where(
+                (Package.session_type == session_type)
+                | (Package.session_type == SessionType.BOTH)
+            )
+            statement = statement.where(Package.status == Status.ACTIVE)
+        elif active_only:
+            statement = statement.where(Package.status == Status.ACTIVE)
+
+        result = await self.db.exec(statement)
+        return result.one()
+
     # check validation column later
 
 
@@ -309,3 +346,15 @@ class RoomRepository:
 
         result = await self.db.exec(statement)
         return result.first() is not None
+
+    async def count_rooms(self, active_only: bool = False) -> int:
+        """Count rooms matching filters."""
+        from sqlalchemy import func
+
+        statement = select(func.count(Room.id))
+
+        if active_only:
+            statement = statement.where(Room.status == Status.ACTIVE)
+
+        result = await self.db.exec(statement)
+        return result.one()

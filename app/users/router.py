@@ -21,6 +21,7 @@ from app.core.security import (
     oauth2_scheme,
     verify_refresh_token,
 )
+from app.core.schemas import PaginatedResponse
 from app.users.models import Role, User
 from app.users.schemas import (
     LogoutRequest,
@@ -235,7 +236,7 @@ users_router = APIRouter(prefix='/users', tags=['users'])
 
 @users_router.get(
     '',
-    response_model=list[UserPublic],
+    response_model=PaginatedResponse[UserPublic],
     status_code=status.HTTP_200_OK,
     summary='List users',
     description='Get paginated list of users. Requires user.list permission.',
@@ -250,9 +251,9 @@ async def list_users(
         int, Query(ge=1, le=100, description='Maximum number of results')
     ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list[User]:
+) -> PaginatedResponse[UserPublic]:
     """
-    List users with pagination.
+    List users with pagination and metadata.
 
     **Query parameters:**
     - active_only: If true, return only active users (default: false)
@@ -262,7 +263,17 @@ async def list_users(
     **Permissions required:** user.list
     """
     service = UserService(db)
-    return await service.list_users(active_only=active_only, limit=limit, offset=offset)
+
+    items = await service.list_users(active_only=active_only, limit=limit, offset=offset)
+    total = await service.count_users(active_only=active_only)
+
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(items)) < total,
+    )
 
 
 @users_router.post(
@@ -359,6 +370,59 @@ async def get_current_user_info(
     """
     service = UserService(db)
     return await service.get_user_with_roles(current_user.id)  # type: ignore
+
+
+@users_router.get(
+    '/me/permissions',
+    response_model=list[str],
+    status_code=status.HTTP_200_OK,
+    summary='Get current user permissions',
+    description='Get all permission codes for the currently authenticated user.',
+)
+async def get_current_user_permissions(
+    current_user: CurrentActiveUser,
+    db: SessionDep,
+) -> list[str]:
+    """
+    Get all permission codes for the currently authenticated user.
+
+    Returns a list of permission codes that the user has through their assigned roles.
+    This endpoint is essential for Angular frontend to implement:
+    - Route guards based on permissions
+    - Conditional UI element visibility
+    - Role-based feature access
+
+    **Example response:**
+    ```json
+    [
+        "user.list",
+        "user.view",
+        "session.create",
+        "session.view",
+        "session.edit",
+        "client.list",
+        "client.view"
+    ]
+    ```
+
+    **Authentication required:** Yes (any authenticated user)
+
+    **Frontend usage example (Angular):**
+    ```typescript
+    // In AuthService
+    async loadUserPermissions(): Promise<string[]> {
+      return this.http.get<string[]>('/users/me/permissions').toPromise();
+    }
+
+    // In Route Guard
+    canActivate(route: ActivatedRouteSnapshot): boolean {
+      const requiredPermission = route.data['permission'];
+      return this.authService.hasPermission(requiredPermission);
+    }
+    ```
+    """
+    service = UserService(db)
+    return await service.get_user_permissions(current_user.id)
 
 
 @users_router.get(
@@ -635,7 +699,7 @@ roles_router = APIRouter(prefix='/roles', tags=['roles'])
 
 @roles_router.get(
     '',
-    response_model=list[RolePublic],
+    response_model=PaginatedResponse[RolePublic],
     status_code=status.HTTP_200_OK,
     summary='List roles',
     description='Get paginated list of roles. Requires role.list permission.',
@@ -650,9 +714,9 @@ async def list_roles(
         int, Query(ge=1, le=100, description='Maximum number of results')
     ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list:
+) -> PaginatedResponse[RolePublic]:
     """
-    List roles with pagination.
+    List roles with pagination and metadata.
 
     **Query parameters:**
     - active_only: If true, return only active roles (default: false)
@@ -662,7 +726,17 @@ async def list_roles(
     **Permissions required:** role.list
     """
     service = RoleService(db)
-    return await service.list_roles(active_only=active_only, limit=limit, offset=offset)
+
+    items = await service.list_roles(active_only=active_only, limit=limit, offset=offset)
+    total = await service.count_roles(active_only=active_only)
+
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(items)) < total,
+    )
 
 
 @roles_router.post(
@@ -756,7 +830,7 @@ permissions_router = APIRouter(prefix='/permissions', tags=['permissions'])
 
 @permissions_router.get(
     '',
-    response_model=list[PermissionPublic],
+    response_model=PaginatedResponse[PermissionPublic],
     status_code=status.HTTP_200_OK,
     summary='List permissions',
     description='Get paginated list of permissions. Requires permission.list permission.',
@@ -772,9 +846,9 @@ async def list_permissions(
         int, Query(ge=1, le=100, description='Maximum number of results')
     ] = 100,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list:
+) -> PaginatedResponse[PermissionPublic]:
     """
-    List permissions with optional filtering.
+    List permissions with optional filtering and pagination metadata.
 
     **Query parameters:**
     - module: Filter permissions by module (e.g., 'user', 'session', 'client')
@@ -785,8 +859,18 @@ async def list_permissions(
     **Permissions required:** permission.list
     """
     service = PermissionService(db)
-    return await service.list_permissions(
+
+    items = await service.list_permissions(
         module=module, active_only=active_only, limit=limit, offset=offset
+    )
+    total = await service.count_permissions(module=module, active_only=active_only)
+
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(items)) < total,
     )
 
 

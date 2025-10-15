@@ -103,6 +103,32 @@ class PermissionRepository:
         result = await self.db.exec(statement)
         return result.first() is not None
 
+    async def count_permissions(
+        self, module: str | None = None, active_only: bool = False
+    ) -> int:
+        """
+        Count permissions matching filters.
+
+        Args:
+            module: Filter by module (optional)
+            active_only: If True, only count active permissions
+
+        Returns:
+            Total count of permissions matching filters
+        """
+        from sqlalchemy import func
+
+        statement = select(func.count(Permission.id))
+
+        if module:
+            statement = statement.where(Permission.module == module)
+
+        if active_only:
+            statement = statement.where(Permission.status == Status.ACTIVE)
+
+        result = await self.db.exec(statement)
+        return result.one()
+
 
 # ==================== Role Repository ====================
 
@@ -215,6 +241,26 @@ class RoleRepository:
         if role_permission:
             await self.db.delete(role_permission)
             await self.db.flush()
+
+    async def count_roles(self, active_only: bool = False) -> int:
+        """
+        Count roles matching filters.
+
+        Args:
+            active_only: If True, only count active roles
+
+        Returns:
+            Total count of roles matching filters
+        """
+        from sqlalchemy import func
+
+        statement = select(func.count(Role.id))
+
+        if active_only:
+            statement = statement.where(Role.status == Status.ACTIVE)
+
+        result = await self.db.exec(statement)
+        return result.one()
 
 
 # ==================== User Repository ====================
@@ -353,3 +399,23 @@ class UserRepository:
         )
         result = await self.db.exec(statement)
         return list(result.all())
+
+    async def count_users(self, active_only: bool = False) -> int:
+        """
+        Count users matching filters.
+
+        Args:
+            active_only: If True, only count active users
+
+        Returns:
+            Total count of users matching filters
+        """
+        from sqlalchemy import func
+
+        statement = select(func.count(User.id))
+
+        if active_only:
+            statement = statement.where(User.status == Status.ACTIVE)
+
+        result = await self.db.exec(statement)
+        return result.one()

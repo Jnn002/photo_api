@@ -1,0 +1,58 @@
+meta {
+  name: List Items - With Multiple Filters
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{back}}/items?active_only=true&item_type=Printed Photo&limit=20&offset=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  active_only: true
+  item_type: Printed Photo
+  limit: 20
+  offset: 0
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return paginated filtered results", function() {
+    const data = res.body;
+    expect(data).to.have.property('items');
+    expect(data).to.have.property('total');
+    expect(Array.isArray(data.items)).to.be.true;
+  });
+
+  test("total should reflect filtered count", function() {
+    const data = res.body;
+    // Total should be count of active items of specified type only
+    expect(data.total).to.be.a('number');
+    if (data.items.length > 0) {
+      // Verify items match filters
+      data.items.forEach(item => {
+        expect(item.item_type).to.equal('Printed Photo');
+        expect(item.status).to.equal('Active');
+      });
+    }
+  });
+
+  test("pagination metadata should be consistent", function() {
+    const data = res.body;
+    expect(data.limit).to.equal(20);
+    expect(data.offset).to.equal(0);
+    // has_more should be true if total > limit
+    if (data.total > 20) {
+      expect(data.has_more).to.be.true;
+    }
+  });
+}

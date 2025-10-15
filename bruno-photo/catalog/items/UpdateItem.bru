@@ -21,7 +21,7 @@ headers {
 body:json {
   {
     "unit_price": "30.00",
-    "description": "Fotografía impresa formato 8x10 pulgadas - Alta calidad"
+    "description": "Fotografía impresa formato 8x10 pulgadas Alta calidad"
   }
 }
 
@@ -29,7 +29,7 @@ tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("should return updated item", function() {
     const data = res.body;
     expect(data).to.have.property('id');

@@ -18,6 +18,7 @@ from app.clients.service import ClientService
 from app.core.dependencies import SessionDep
 from app.core.enums import ClientType
 from app.core.permissions import require_permission
+from app.core.schemas import PaginatedResponse
 from app.users.models import User
 
 # ==================== Clients Router ====================
@@ -59,7 +60,7 @@ async def create_client(
 
 @clients_router.get(
     '',
-    response_model=list[ClientPublic],
+    response_model=PaginatedResponse[ClientPublic],
     status_code=status.HTTP_200_OK,
     summary='List clients',
     description='Get paginated list of clients with optional filters. Requires client.view permission.',
@@ -82,9 +83,11 @@ async def list_clients(
         int, Query(ge=1, le=100, description='Maximum number of results')
     ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list[Client]:
+) -> PaginatedResponse[ClientPublic]:
     """
     List clients with pagination and optional filters.
+
+    Returns paginated response with metadata for Angular Material tables.
 
     **Query parameters:**
     - active_only: If true, return only active clients (default: false)
@@ -93,15 +96,43 @@ async def list_clients(
     - limit: Maximum number of clients to return (1-100, default: 50)
     - offset: Number of clients to skip for pagination (default: 0)
 
-    **Permissions required:** client.list
+    **Example response:**
+    ```json
+    {
+        "items": [
+            {"id": 1, "full_name": "John Doe", ...},
+            {"id": 2, "full_name": "Jane Smith", ...}
+        ],
+        "total": 150,
+        "limit": 50,
+        "offset": 0,
+        "has_more": true
+    }
+    ```
+
+    **Permissions required:** client.view
     """
     service = ClientService(db)
-    return await service.list_clients(
+
+    # Get items and total count in parallel would be more efficient, but for simplicity:
+    items = await service.list_clients(
         active_only=active_only,
         client_type=client_type,
         search=search,
         limit=limit,
         offset=offset,
+    )
+
+    total = await service.count_clients(
+        active_only=active_only, client_type=client_type, search=search
+    )
+
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(items)) < total,
     )
 
 
