@@ -12,6 +12,7 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import Field
 
 from app.core.dependencies import SessionDep
 from app.core.enums import SessionStatus
@@ -259,7 +260,7 @@ async def list_my_editing(
     description='Get detailed session information by ID. Requires session.view.all permission.',
 )
 async def get_session(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.view.all'))],
 ) -> SessionModel:
@@ -283,7 +284,7 @@ async def get_session(
     description='Update session information. Requires session.edit.pre-assigned permission.',
 )
 async def update_session(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionUpdate,
     db: SessionDep,
     current_user: Annotated[
@@ -313,7 +314,6 @@ async def update_session(
 
     **Permissions required:** session.edit.pre-assigned
     """
-    # TODO: VERIFY CHANGES DEADLINE LOGIC
     service = SessionService(db)
     return await service.update_session(session_id, data, updated_by=current_user.id)  # type: ignore
 
@@ -329,7 +329,7 @@ async def update_session(
     description='Transition session to a new status. Requires session.transition permission.',
 )
 async def transition_status(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionStatusTransition,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.edit.all'))],
@@ -364,7 +364,6 @@ async def transition_status(
 
     **Permissions required:** session.transition
     """
-    # TODO: MANAGE PERMISSION AND LOGIC FOR EACH TRANSITION
     service = SessionService(db)
     return await service.transition_status(
         session_id,
@@ -383,7 +382,7 @@ async def transition_status(
     description='Cancel session with refund calculation. Requires session.cancel permission.',
 )
 async def cancel_session(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionCancellation,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.cancel'))],
@@ -422,7 +421,7 @@ async def cancel_session(
     description='Mark session as ready for delivery (editor completed editing). Requires session.mark-ready permission.',
 )
 async def mark_session_ready(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionMarkReady,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.mark-ready'))],
@@ -466,7 +465,7 @@ async def mark_session_ready(
     description='Assign an editor to a session for editing phase. Requires session.assign-resources permission.',
 )
 async def assign_editor_to_session(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionEditorAssignment,
     db: SessionDep,
     current_user: Annotated[
@@ -520,8 +519,8 @@ async def assign_editor_to_session(
     description='Add an individual item to session. Requires session.edit permission.',
 )
 async def add_item_to_session(
-    session_id: int,
-    item_id: int,
+    session_id: Annotated[int, Field(gt=0)],
+    item_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.edit.all'))],
     quantity: Annotated[int, Query(ge=1, description='Quantity of item')] = 1,
@@ -543,7 +542,6 @@ async def add_item_to_session(
 
     **Permissions required:** session.edit
     """
-    # TODO: VERIFY PERMISSIONS
     service = SessionDetailService(db)
     detail = await service.add_item_to_session(
         session_id,
@@ -567,8 +565,8 @@ async def add_item_to_session(
     description='Add a package to session (package explosion). Requires session.edit.all permission.',
 )
 async def add_package_to_session(
-    session_id: int,
-    package_id: int,
+    session_id: Annotated[int, Field(gt=0)],
+    package_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.edit.all'))],
 ) -> list[SessionDetail]:
@@ -610,7 +608,7 @@ async def add_package_to_session(
     description='Get all line items for a session. Requires session.view permission.',
 )
 async def list_session_details(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.view.all'))],
 ) -> list[SessionDetail]:
@@ -633,8 +631,8 @@ async def list_session_details(
     description='Remove a line item from session. Requires session.edit permission.',
 )
 async def remove_session_detail(
-    session_id: int,
-    detail_id: int,
+    session_id: Annotated[int, Field(gt=0)],
+    detail_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.edit'))],
 ) -> None:
@@ -666,7 +664,7 @@ async def remove_session_detail(
     description='Recalculate all financial totals from details. Requires session.edit permission.',
 )
 async def recalculate_session_totals(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.edit.all'))],
 ) -> SessionModel:
@@ -699,7 +697,7 @@ async def recalculate_session_totals(
     description='Record a payment for a session. Requires session.payment permission.',
 )
 async def record_payment(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionPaymentCreate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.payment'))],
@@ -736,7 +734,7 @@ async def record_payment(
     description='Get all payments for a session. Requires session.view permission.',
 )
 async def list_session_payments(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.view'))],
 ) -> list[SessionPayment]:
@@ -763,7 +761,7 @@ async def list_session_payments(
     description='Assign a photographer to a session. Requires session.assign-resources permission.',
 )
 async def assign_photographer(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionPhotographerAssign,
     db: SessionDep,
     current_user: Annotated[
@@ -804,7 +802,7 @@ async def assign_photographer(
     description='Get all photographer assignments for a session. Requires session.view permission.',
 )
 async def list_session_photographers(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.view.all'))],
 ) -> list[SessionPhotographer]:
@@ -828,8 +826,8 @@ async def list_session_photographers(
     description='Mark photographer as attended and auto-transition session to ATTENDED. Requires session.mark-attended permission.',
 )
 async def mark_photographer_attended(
-    session_id: int,
-    assignment_id: int,
+    session_id: Annotated[int, Field(gt=0)],
+    assignment_id: Annotated[int, Field(gt=0)],
     data: SessionPhotographerUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.mark-attended'))],
@@ -856,7 +854,9 @@ async def mark_photographer_attended(
     """
     service = SessionPhotographerService(db)
     return await service.mark_attended(
-        assignment_id, marked_by=current_user.id, notes=data.notes  # type: ignore
+        assignment_id,
+        marked_by=current_user.id,  # type: ignore
+        notes=data.notes,  # type: ignore
     )
 
 
@@ -868,7 +868,7 @@ async def mark_photographer_attended(
     description='Mark attendance for current photographer without needing assignment_id. Requires session.mark-attended permission.',
 )
 async def mark_my_attendance(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionPhotographerUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.mark-attended'))],
@@ -921,8 +921,8 @@ async def mark_my_attendance(
     description='Remove a photographer from a session. Requires session.assign-resources permission.',
 )
 async def remove_photographer_assignment(
-    session_id: int,
-    assignment_id: int,
+    session_id: Annotated[int, Field(gt=0)],
+    assignment_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[
         User, Depends(require_permission('session.assign-resources'))
@@ -952,7 +952,7 @@ async def remove_photographer_assignment(
     description='Get status change history for a session. Requires session.view.all permission.',
 )
 async def get_session_status_history(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.view.all'))],
 ) -> list[SessionStatusHistory]:

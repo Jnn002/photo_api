@@ -12,6 +12,7 @@ This module exposes REST endpoints for:
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Query, status
+from pydantic import Field
 
 from app.core.dependencies import CurrentActiveUser, SessionDep
 from app.core.permissions import require_permission
@@ -367,9 +368,8 @@ async def get_current_user_info(
     summary='Get user by ID',
     description='Get user information by ID with roles. Requires user.read permission.',
 )
-# todo: VERIFY USER READ PERMISSION LATER
 async def get_user(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('user.list'))],
 ) -> User:
@@ -393,7 +393,7 @@ async def get_user(
     description='Update user information. Requires user.edit permission.',
 )
 async def update_user(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     data: UserUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('user.edit'))],
@@ -426,7 +426,7 @@ async def update_user(
     description='Deactivate (soft delete) a user. Requires user.delete permission.',
 )
 async def deactivate_user(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('user.delete'))],
 ) -> User:
@@ -453,7 +453,7 @@ async def deactivate_user(
     description='Reactivate a deactivated user. Requires user.edit permission.',
 )
 async def reactivate_user(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('user.edit'))],
 ) -> User:
@@ -479,7 +479,7 @@ async def reactivate_user(
     description='Change user password. Users can change their own password, or admins can change any password.',
 )
 async def change_password(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     data: UserPasswordUpdate,
     db: SessionDep,
     current_user: CurrentActiveUser,
@@ -501,7 +501,6 @@ async def change_password(
     - Own password: Any authenticated user can change their own password
     - Other users: Requires user.edit permission
     """
-    # TODO: VERIFY PASSWORD VALIDATION => ERROR 500 INTERNAL SERVER PROBLEM
     service = UserService(db)
 
     # Check if user is changing their own password or has permission
@@ -533,7 +532,7 @@ user_roles_router = APIRouter(prefix='/users', tags=['user-roles'])
     description='Get all roles assigned to a user.',
 )
 async def list_user_roles(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: CurrentActiveUser,
 ) -> list:
@@ -572,8 +571,8 @@ async def list_user_roles(
     description='Assign a role to a user. Requires role.assign permission.',
 )
 async def assign_role(
-    user_id: int,
-    role_id: int,
+    user_id: Annotated[int, Field(gt=0)],
+    role_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('role.assign'))],
 ) -> User:
@@ -607,8 +606,8 @@ async def assign_role(
     description='Remove a role from a user. Requires role.assign permission.',
 )
 async def remove_role(
-    user_id: int,
-    role_id: int,
+    user_id: Annotated[int, Field(gt=0)],
+    role_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('role.assign'))],
 ) -> User:
@@ -702,7 +701,7 @@ async def create_role(
     description='Get role information by ID with permissions. Requires role.read permission.',
 )
 async def get_role(
-    role_id: int,
+    role_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('role.read'))],
 ) -> RoleWithPermissions:
@@ -727,7 +726,7 @@ async def get_role(
     description='Update role information. Requires role.edit permission.',
 )
 async def update_role(
-    role_id: int,
+    role_id: Annotated[int, Field(gt=0)],
     data: RoleUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('role.edit'))],

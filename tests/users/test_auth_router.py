@@ -13,7 +13,6 @@ from httpx import AsyncClient
 from app.core.security import create_refresh_token
 from app.users.models import User
 
-
 # ==================== Login Endpoint Tests ====================
 
 
@@ -138,7 +137,9 @@ class TestLoginEndpoint:
         assert response.status_code == 422  # Validation error
 
     @pytest.mark.asyncio
-    async def test_login_tokens_are_different(self, client: AsyncClient, test_user: User):
+    async def test_login_tokens_are_different(
+        self, client: AsyncClient, test_user: User
+    ):
         """Test that access token and refresh token are different."""
         response = await client.post(
             '/auth/login',
@@ -470,9 +471,6 @@ class TestAuthenticationFlow:
         )
         assert logout_response.status_code == 204
 
-        # Note: Token is still valid until Redis blacklist is implemented
-        # TODO: After implementing Redis blacklist, test that token is revoked
-
     @pytest.mark.asyncio
     async def test_multiple_users_login_simultaneously(
         self, client: AsyncClient, test_user: User, create_test_user
@@ -502,11 +500,11 @@ class TestAuthenticationFlow:
         # Each user can access their own data
         me1 = await client.get(
             '/users/me',
-            headers={'Authorization': f"Bearer {response1.json()['access_token']}"},
+            headers={'Authorization': f'Bearer {response1.json()["access_token"]}'},
         )
         me2 = await client.get(
             '/users/me',
-            headers={'Authorization': f"Bearer {response2.json()['access_token']}"},
+            headers={'Authorization': f'Bearer {response2.json()["access_token"]}'},
         )
 
         assert me1.json()['email'] == test_user.email
@@ -568,9 +566,7 @@ class TestAuthenticationSecurity:
         assert 'jti' in payload  # JWT ID
 
     @pytest.mark.asyncio
-    async def test_failed_login_response_time_is_consistent(
-        self, client: AsyncClient
-    ):
+    async def test_failed_login_response_time_is_consistent(self, client: AsyncClient):
         """Test that failed login doesn't reveal if email exists (timing attack prevention)."""
         import time
 

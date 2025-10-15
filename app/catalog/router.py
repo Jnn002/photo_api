@@ -10,6 +10,7 @@ This module exposes REST endpoints for:
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import Field
 
 from app.catalog.models import Item, Package, Room
 from app.catalog.schemas import (
@@ -116,7 +117,7 @@ async def list_items(
     description='Get item information by ID. Requires item.create permission.',
 )
 async def get_item(
-    item_id: int,
+    item_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('item.create'))],
 ) -> Item:
@@ -140,7 +141,7 @@ async def get_item(
     description='Update item information. Requires item.edit permission.',
 )
 async def update_item(
-    item_id: int,
+    item_id: Annotated[int, Field(gt=0)],
     data: ItemUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('item.edit'))],
@@ -175,7 +176,7 @@ async def update_item(
     description='Deactivate (soft delete) an item. Requires item.delete permission.',
 )
 async def deactivate_item(
-    item_id: int,
+    item_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('item.delete'))],
 ) -> Item:
@@ -201,7 +202,7 @@ async def deactivate_item(
     description='Reactivate a deactivated item. Requires item.edit permission.',
 )
 async def reactivate_item(
-    item_id: int,
+    item_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('item.edit'))],
 ) -> Item:
@@ -302,7 +303,7 @@ async def list_packages(
     description='Get package information by ID with included items. Requires package.create permission.',
 )
 async def get_package(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.create'))],
 ) -> PackageDetail:
@@ -344,7 +345,7 @@ async def get_package(
     description='Update package information. Requires package.edit permission.',
 )
 async def update_package(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     data: PackageUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.edit'))],
@@ -378,7 +379,7 @@ async def update_package(
     description='Deactivate (soft delete) a package. Requires package.delete permission.',
 )
 async def deactivate_package(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.delete'))],
 ) -> Package:
@@ -404,7 +405,7 @@ async def deactivate_package(
     description='Reactivate a deactivated package. Requires package.edit permission.',
 )
 async def reactivate_package(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.edit'))],
 ) -> Package:
@@ -433,7 +434,7 @@ async def reactivate_package(
     description='Add an item to a package. Requires package.edit permission.',
 )
 async def add_item_to_package(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     data: PackageItemCreate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.edit'))],
@@ -473,8 +474,8 @@ async def add_item_to_package(
     description='Remove an item from a package. Requires package.edit permission.',
 )
 async def remove_item_from_package(
-    package_id: int,
-    item_id: int,
+    package_id: Annotated[int, Field(gt=0)],
+    item_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.edit'))],
 ) -> None:
@@ -499,7 +500,7 @@ async def remove_item_from_package(
     description='Get all items in a package with details. Requires package.create permission.',
 )
 async def get_package_items(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.create'))],
 ) -> list[PackageItemDetail]:
@@ -589,7 +590,7 @@ async def list_rooms(
     description='Get room information by ID. Requires room.create permission.',
 )
 async def get_room(
-    room_id: int,
+    room_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('room.create'))],
 ) -> Room:
@@ -613,7 +614,7 @@ async def get_room(
     description='Update room information. Requires room.edit permission.',
 )
 async def update_room(
-    room_id: int,
+    room_id: Annotated[int, Field(gt=0)],
     data: RoomUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('room.edit'))],
@@ -645,7 +646,7 @@ async def update_room(
     description='Deactivate (soft delete) a room. Requires room.delete permission.',
 )
 async def deactivate_room(
-    room_id: int,
+    room_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('room.delete'))],
 ) -> Room:
@@ -671,7 +672,7 @@ async def deactivate_room(
     description='Reactivate a deactivated room. Requires room.edit permission.',
 )
 async def reactivate_room(
-    room_id: int,
+    room_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('room.edit'))],
 ) -> Room:
@@ -697,7 +698,7 @@ async def reactivate_room(
     description='Set room status to MAINTENANCE. Requires room.edit permission.',
 )
 async def set_room_maintenance(
-    room_id: int,
+    room_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('room.edit'))],
 ) -> Room:

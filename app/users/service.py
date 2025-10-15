@@ -30,7 +30,6 @@ from app.users.models import Permission, Role, User
 from app.users.repository import PermissionRepository, RoleRepository, UserRepository
 from app.users.schemas import (
     PermissionCreate,
-    PermissionUpdate,
     RoleCreate,
     RoleUpdate,
     TokenResponse,
@@ -232,9 +231,7 @@ class UserService:
 
         return user
 
-    async def update_password(
-        self, user_id: int, data: UserPasswordUpdate
-    ) -> User:
+    async def update_password(self, user_id: int, data: UserPasswordUpdate) -> User:
         """
         Update user password.
 
@@ -277,8 +274,6 @@ class UserService:
 
         logger.info(f'Password updated for user: {user.email} (ID: {user.id})')
 
-        # TODO: Revoke all existing tokens for this user (implement with Redis blacklist)
-
         return user
 
     async def deactivate_user(self, user_id: int, deactivated_by: int) -> User:
@@ -315,8 +310,6 @@ class UserService:
         logger.info(
             f'User deactivated: {user.email} (ID: {user.id}) by user {deactivated_by}'
         )
-
-        # TODO: Revoke all tokens for this user (implement with Redis blacklist)
 
         return user
 
@@ -391,9 +384,7 @@ class UserService:
         # Check if already assigned
         user_with_roles = await self.user_repo.get_with_roles(user_id)
         if user_with_roles and any(r.id == role_id for r in user_with_roles.roles):
-            raise BusinessValidationException(
-                f'User already has role {role.name}'
-            )
+            raise BusinessValidationException(f'User already has role {role.name}')
 
         # Assign role
         await self.user_repo.assign_role(user_id, role_id, assigned_by)

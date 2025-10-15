@@ -10,6 +10,7 @@ This module exposes REST endpoints for:
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import Field
 
 from app.clients.models import Client
 from app.clients.schemas import ClientCreate, ClientPublic, ClientUpdate
@@ -112,7 +113,7 @@ async def list_clients(
     description='Get client information by ID. Requires client.view permission.',
 )
 async def get_client(
-    client_id: int,
+    client_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('client.view'))],
 ) -> Client:
@@ -136,7 +137,7 @@ async def get_client(
     description='Update client information. Requires client.edit permission.',
 )
 async def update_client(
-    client_id: int,
+    client_id: Annotated[int, Field(gt=0)],
     data: ClientUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('client.edit'))],
@@ -171,7 +172,7 @@ async def update_client(
     description='Deactivate (soft delete) a client. Requires client.delete permission.',
 )
 async def deactivate_client(
-    client_id: int,
+    client_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('client.delete'))],
 ) -> Client:
@@ -197,7 +198,7 @@ async def deactivate_client(
     description='Reactivate a deactivated client. Requires client.edit permission.',
 )
 async def reactivate_client(
-    client_id: int,
+    client_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('client.edit'))],
 ) -> Client:
