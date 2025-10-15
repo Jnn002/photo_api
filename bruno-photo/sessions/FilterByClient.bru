@@ -5,14 +5,14 @@ meta {
 }
 
 get {
-  url: {{back}}/sessions?:client_id=1&limit=20
+  url: {{back}}/sessions?client_id=1&limit=10
   body: none
   auth: inherit
 }
 
 params:query {
-  ":client_id": 1
-  limit: 20
+  client_id: 1
+  limit: 10
 }
 
 headers {

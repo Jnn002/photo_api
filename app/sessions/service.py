@@ -306,6 +306,38 @@ class SessionService:
 
         return sessions
 
+    async def count_sessions(
+        self,
+        client_id: int | None = None,
+        status: SessionStatus | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        photographer_id: int | None = None,
+        editor_id: int | None = None,
+    ) -> int:
+        """
+        Count sessions matching filters.
+
+        Args:
+            client_id: Filter by client
+            status: Filter by session status
+            start_date: Filter from this date (inclusive)
+            end_date: Filter until this date (inclusive)
+            photographer_id: Filter by assigned photographer
+            editor_id: Filter by assigned editor
+
+        Returns:
+            Total count of sessions matching filters
+        """
+        return await self.repo.count_sessions(
+            client_id=client_id,
+            status=status,
+            start_date=start_date,
+            end_date=end_date,
+            photographer_id=photographer_id,
+            editor_id=editor_id,
+        )
+
     async def update_session(
         self, session_id: int, data: SessionUpdate, updated_by: int
     ) -> SessionModel:

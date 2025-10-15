@@ -17,6 +17,7 @@ from pydantic import Field
 from app.core.dependencies import SessionDep
 from app.core.enums import SessionStatus
 from app.core.permissions import require_permission
+from app.core.schemas import PaginatedResponse
 from app.sessions.models import (
     Session as SessionModel,
 )
@@ -98,7 +99,7 @@ async def create_session(
 
 @sessions_router.get(
     '',
-    response_model=list[SessionPublic],
+    response_model=PaginatedResponse[SessionPublic],
     status_code=status.HTTP_200_OK,
     summary='List sessions',
     description='Get paginated list of sessions with optional filters. Requires session.view.all permission.',
@@ -125,9 +126,9 @@ async def list_sessions(
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=100, description='Maximum number of results')
-    ] = 100,
+    ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list[SessionModel]:
+) -> PaginatedResponse[SessionPublic]:
     """
     List sessions with pagination and optional filters.
 
@@ -138,13 +139,20 @@ async def list_sessions(
     - end_date: Filter until this date (inclusive)
     - photographer_id: Filter by assigned photographer
     - editor_id: Filter by assigned editor
-    - limit: Maximum results (1-100, default: 100)
+    - limit: Maximum results (1-100, default: 50)
     - offset: Skip results for pagination (default: 0)
+
+    **Response:**
+    - items: List of sessions for the current page
+    - total: Total number of sessions matching filters
+    - limit: Maximum items per page
+    - offset: Number of items skipped
+    - has_more: Whether there are more sessions beyond this page
 
     **Permissions required:** session.view.all
     """
     service = SessionService(db)
-    return await service.list_sessions(
+    sessions = await service.list_sessions(
         client_id=client_id,
         status=status_filter,
         start_date=start_date,
@@ -154,11 +162,27 @@ async def list_sessions(
         limit=limit,
         offset=offset,
     )
+    total = await service.count_sessions(
+        client_id=client_id,
+        status=status_filter,
+        start_date=start_date,
+        end_date=end_date,
+        photographer_id=photographer_id,
+        editor_id=editor_id,
+    )
+
+    return PaginatedResponse(
+        items=sessions,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(sessions)) < total,
+    )
 
 
 @sessions_router.get(
     '/my-assignments',
-    response_model=list[SessionPublic],
+    response_model=PaginatedResponse[SessionPublic],
     status_code=status.HTTP_200_OK,
     summary='List my assigned sessions (Photographer)',
     description='Get sessions assigned to current photographer. Requires session.view.own permission.',
@@ -178,9 +202,9 @@ async def list_my_assignments(
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=100, description='Maximum number of results')
-    ] = 100,
+    ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list[SessionModel]:
+) -> PaginatedResponse[SessionPublic]:
     """
     List sessions assigned to the current photographer.
 
@@ -188,13 +212,20 @@ async def list_my_assignments(
     - status: Filter by session status (optional)
     - start_date: Filter from this date (inclusive, optional)
     - end_date: Filter until this date (inclusive, optional)
-    - limit: Maximum results (1-100, default: 100)
+    - limit: Maximum results (1-100, default: 50)
     - offset: Skip results for pagination (default: 0)
+
+    **Response:**
+    - items: List of sessions for the current page
+    - total: Total number of sessions matching filters
+    - limit: Maximum items per page
+    - offset: Number of items skipped
+    - has_more: Whether there are more sessions beyond this page
 
     **Permissions required:** session.view.own
     """
     service = SessionService(db)
-    return await service.list_my_photographer_assignments(
+    sessions = await service.list_my_photographer_assignments(
         photographer_id=current_user.id,  # type: ignore
         status=status_filter,
         start_date=start_date,
@@ -202,11 +233,25 @@ async def list_my_assignments(
         limit=limit,
         offset=offset,
     )
+    total = await service.count_sessions(
+        photographer_id=current_user.id,  # type: ignore
+        status=status_filter,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    return PaginatedResponse(
+        items=sessions,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(sessions)) < total,
+    )
 
 
 @sessions_router.get(
     '/my-editing',
-    response_model=list[SessionPublic],
+    response_model=PaginatedResponse[SessionPublic],
     status_code=status.HTTP_200_OK,
     summary='List my editing assignments (Editor)',
     description='Get sessions assigned to current editor. Requires session.view.own permission.',
@@ -226,9 +271,9 @@ async def list_my_editing(
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=100, description='Maximum number of results')
-    ] = 100,
+    ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list[SessionModel]:
+) -> PaginatedResponse[SessionPublic]:
     """
     List sessions assigned to the current editor.
 
@@ -236,19 +281,40 @@ async def list_my_editing(
     - status: Filter by session status (optional, default: IN_EDITING)
     - start_date: Filter from this date (inclusive, optional)
     - end_date: Filter until this date (inclusive, optional)
-    - limit: Maximum results (1-100, default: 100)
+    - limit: Maximum results (1-100, default: 50)
     - offset: Skip results for pagination (default: 0)
+
+    **Response:**
+    - items: List of sessions for the current page
+    - total: Total number of sessions matching filters
+    - limit: Maximum items per page
+    - offset: Number of items skipped
+    - has_more: Whether there are more sessions beyond this page
 
     **Permissions required:** session.view.own
     """
     service = SessionService(db)
-    return await service.list_my_editor_assignments(
+    sessions = await service.list_my_editor_assignments(
         editor_id=current_user.id,  # type: ignore
         status=status_filter,
         start_date=start_date,
         end_date=end_date,
         limit=limit,
         offset=offset,
+    )
+    total = await service.count_sessions(
+        editor_id=current_user.id,  # type: ignore
+        status=status_filter,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    return PaginatedResponse(
+        items=sessions,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(sessions)) < total,
     )
 
 
