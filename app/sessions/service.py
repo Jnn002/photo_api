@@ -406,6 +406,28 @@ class SessionService:
         See files/business_rules_doc.md for complete rules.
         """
         if to_status == SessionStatus.PRE_SCHEDULED:
+            # VALIDATION: Session must have at least one item and total > 0
+            details = await self.detail_repo.list_by_session(session.id)
+            if not details:
+                from app.core.exceptions import InvalidStatusTransitionException
+
+                raise InvalidStatusTransitionException(
+                    session.status.value,
+                    to_status.value,
+                    [],
+                    'Session must have at least one item or package before pre-scheduling',
+                )
+
+            if session.total_amount <= 0:
+                from app.core.exceptions import InvalidStatusTransitionException
+
+                raise InvalidStatusTransitionException(
+                    session.status.value,
+                    to_status.value,
+                    [],
+                    'Session total must be greater than 0',
+                )
+
             # Calculate payment deadline (5 days from today)
             session.payment_deadline = date.today() + timedelta(
                 days=settings.PAYMENT_DEADLINE_DAYS
@@ -417,7 +439,7 @@ class SessionService:
             )
 
         elif to_status == SessionStatus.CONFIRMED:
-            # Validate deposit has been paid
+            # VALIDATION: Deposit payment must be verified
             if session.paid_amount < session.deposit_amount:
                 raise InsufficientBalanceException(
                     session.id,
@@ -425,7 +447,43 @@ class SessionService:
                     0.0,
                 )
 
+        elif to_status == SessionStatus.ASSIGNED:
+            # VALIDATION: At least one photographer must be assigned
+            photographer_repo = SessionPhotographerRepository(self.db)
+            photographers = await photographer_repo.list_by_session(session.id)
+            if not photographers:
+                from app.core.exceptions import InvalidStatusTransitionException
+
+                raise InvalidStatusTransitionException(
+                    session.status.value,
+                    to_status.value,
+                    [],
+                    'Session must have at least one photographer assigned before transitioning to ASSIGNED',
+                )
+
+            # VALIDATION: Studio sessions must have a room assigned
+            if session.session_type == SessionType.STUDIO and not session.room_id:
+                from app.core.exceptions import InvalidStatusTransitionException
+
+                raise InvalidStatusTransitionException(
+                    session.status.value,
+                    to_status.value,
+                    [],
+                    'Studio session must have a room assigned',
+                )
+
         elif to_status == SessionStatus.IN_EDITING:
+            # VALIDATION: Editor must be assigned
+            if not session.editing_assigned_to:
+                from app.core.exceptions import InvalidStatusTransitionException
+
+                raise InvalidStatusTransitionException(
+                    session.status.value,
+                    to_status.value,
+                    [],
+                    'Session must have an editor assigned before transitioning to IN_EDITING',
+                )
+
             # Calculate delivery deadline (based on editing days)
             editing_days = settings.DEFAULT_EDITING_DAYS
             session.delivery_deadline = date.today() + timedelta(days=editing_days)
@@ -440,12 +498,15 @@ class SessionService:
                 session.editing_completed_at = get_current_utc_time()
 
         elif to_status == SessionStatus.COMPLETED:
-            # Validate full payment
+            # VALIDATION: Full payment must be received
+            # Even though business_rules_doc.md marks this as optional,
+            # we enforce it to ensure clients have paid in full before delivery
             if session.paid_amount < session.total_amount:
+                remaining = session.total_amount - session.paid_amount
                 raise InsufficientBalanceException(
                     session.id,
-                    float(session.total_amount - session.paid_amount),
-                    0.0,
+                    float(remaining),
+                    float(session.total_amount),
                 )
 
             # Record delivery
@@ -613,21 +674,26 @@ class SessionService:
         Assign an editor to a session and auto-transition to IN_EDITING.
 
         When an editor is assigned to an ATTENDED session:
-        - Sets editing_assigned_to field
+        - Sets editing_assigned_to field FIRST (committed to DB)
         - Automatically transitions session from ATTENDED to IN_EDITING
         - Records editing_started_at timestamp (via transition logic)
         - Calculates delivery_deadline (via transition logic)
+        - This order ensures the validation can find the editor assignment
 
         This ensures the editing phase starts immediately when editor is assigned.
         """
         session = await self.get_session(session_id)
 
-        # Assign editor
+        # Assign editor FIRST
         session.editing_assigned_to = editor_id
         self.db.add(session)
-        await self.db.flush()
+        # IMPORTANT: Commit immediately so the editor assignment exists in DB
+        # before the transition validation runs
+        await self.db.commit()
+        await self.db.refresh(session)
 
         # Auto-transition to IN_EDITING if session is ATTENDED
+        # This will now pass validation because editor is assigned in DB
         if session.status == SessionStatus.ATTENDED:
             await self.transition_status(
                 session_id=session_id,
@@ -637,7 +703,7 @@ class SessionService:
                 notes=f'Editor ID {editor_id} assigned for post-processing',
             )
 
-        await self.db.commit()
+        # Refresh to get any updates from the transition
         await self.db.refresh(session)
 
         return session
@@ -938,8 +1004,9 @@ class SessionPhotographerService:
         Assign a photographer to a session and auto-transition to ASSIGNED.
 
         When a photographer is assigned to a CONFIRMED session:
-        - Creates photographer assignment record
+        - Creates photographer assignment record FIRST (committed to DB)
         - Automatically transitions session from CONFIRMED to ASSIGNED
+        - This order ensures the validation can find the photographer
 
         Validates:
         - Session exists
@@ -962,7 +1029,7 @@ class SessionPhotographerService:
                     session.session_time,
                 )
 
-        # Create assignment
+        # Create assignment FIRST
         assignment = SessionPhotographer(
             session_id=data.session_id,
             photographer_id=data.photographer_id,
@@ -971,9 +1038,13 @@ class SessionPhotographerService:
         )
 
         assignment = await self.repo.create(assignment)
-        await self.db.flush()
+        # IMPORTANT: Commit immediately so the assignment exists in DB
+        # before the transition validation runs
+        await self.db.commit()
+        await self.db.refresh(assignment)
 
         # Auto-transition to ASSIGNED if session is CONFIRMED
+        # This will now pass validation because photographer exists in DB
         if session.status == SessionStatus.CONFIRMED:
             from app.sessions.service import SessionService
 
@@ -986,7 +1057,7 @@ class SessionPhotographerService:
                 notes=f'Photographer ID {data.photographer_id} assigned for photography',
             )
 
-        await self.db.commit()
+        # Refresh assignment to get any updates from the transition
         await self.db.refresh(assignment)
 
         return assignment
