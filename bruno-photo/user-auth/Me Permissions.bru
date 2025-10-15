@@ -1,0 +1,19 @@
+meta {
+  name: Me Permissions
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{back}}/users/me/permissions
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+}

@@ -145,6 +145,21 @@ class ItemService:
         await self.db.refresh(item)
         return item
 
+    async def count_items(
+        self, active_only: bool = False, item_type: ItemType | None = None
+    ) -> int:
+        """
+        Count items matching filters.
+
+        Args:
+            active_only: If True, only count active items
+            item_type: Filter by item type (optional)
+
+        Returns:
+            Total count of items matching filters
+        """
+        return await self.repo.count_items(active_only=active_only, item_type=item_type)
+
 
 # ==================== Package Service ====================
 
@@ -417,6 +432,23 @@ class PackageService:
             for pi in package_items
         ]
 
+    async def count_packages(
+        self, active_only: bool = False, session_type: SessionType | None = None
+    ) -> int:
+        """
+        Count packages matching filters.
+
+        Args:
+            active_only: If True, only count active packages
+            session_type: Filter by session type (optional)
+
+        Returns:
+            Total count of packages matching filters
+        """
+        return await self.repo.count_packages(
+            active_only=active_only, session_type=session_type
+        )
+
 
 # ==================== Room Service ====================
 
@@ -520,3 +552,15 @@ class RoomService:
         await self.db.commit()
         await self.db.refresh(room)
         return room
+
+    async def count_rooms(self, active_only: bool = False) -> int:
+        """
+        Count rooms matching filters.
+
+        Args:
+            active_only: If True, only count active rooms
+
+        Returns:
+            Total count of rooms matching filters
+        """
+        return await self.repo.count_rooms(active_only=active_only)

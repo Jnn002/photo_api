@@ -246,6 +246,98 @@ class SessionService:
 
         return await self.repo.list_all(limit, offset)
 
+    async def list_my_photographer_assignments(
+        self,
+        photographer_id: int,
+        status: SessionStatus | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[SessionModel]:
+        """
+        List sessions assigned to a specific photographer.
+
+        Used by photographers to view their own assignments.
+        Supports filtering by status and date range.
+        """
+        # Get sessions assigned to this photographer
+        sessions = await self.repo.list_by_photographer(photographer_id, limit, offset)
+
+        # Apply optional filters
+        if status:
+            sessions = [s for s in sessions if s.status == status]
+
+        if start_date:
+            sessions = [s for s in sessions if s.session_date >= start_date]
+
+        if end_date:
+            sessions = [s for s in sessions if s.session_date <= end_date]
+
+        return sessions
+
+    async def list_my_editor_assignments(
+        self,
+        editor_id: int,
+        status: SessionStatus | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[SessionModel]:
+        """
+        List sessions assigned to a specific editor.
+
+        Used by editors to view sessions they need to edit.
+        Typically filters for IN_EDITING status by default.
+        """
+        # Get sessions assigned to this editor
+        sessions = await self.repo.list_by_editor(editor_id, limit, offset)
+
+        # Apply optional filters
+        if status:
+            sessions = [s for s in sessions if s.status == status]
+
+        if start_date:
+            sessions = [s for s in sessions if s.session_date >= start_date]
+
+        if end_date:
+            sessions = [s for s in sessions if s.session_date <= end_date]
+
+        return sessions
+
+    async def count_sessions(
+        self,
+        client_id: int | None = None,
+        status: SessionStatus | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        photographer_id: int | None = None,
+        editor_id: int | None = None,
+    ) -> int:
+        """
+        Count sessions matching filters.
+
+        Args:
+            client_id: Filter by client
+            status: Filter by session status
+            start_date: Filter from this date (inclusive)
+            end_date: Filter until this date (inclusive)
+            photographer_id: Filter by assigned photographer
+            editor_id: Filter by assigned editor
+
+        Returns:
+            Total count of sessions matching filters
+        """
+        return await self.repo.count_sessions(
+            client_id=client_id,
+            status=status,
+            start_date=start_date,
+            end_date=end_date,
+            photographer_id=photographer_id,
+            editor_id=editor_id,
+        )
+
     async def update_session(
         self, session_id: int, data: SessionUpdate, updated_by: int
     ) -> SessionModel:
@@ -346,6 +438,28 @@ class SessionService:
         See files/business_rules_doc.md for complete rules.
         """
         if to_status == SessionStatus.PRE_SCHEDULED:
+            # VALIDATION: Session must have at least one item and total > 0
+            details = await self.detail_repo.list_by_session(session.id)
+            if not details:
+                from app.core.exceptions import InvalidStatusTransitionException
+
+                raise InvalidStatusTransitionException(
+                    session.status.value,
+                    to_status.value,
+                    [],
+                    'Session must have at least one item or package before pre-scheduling',
+                )
+
+            if session.total_amount <= 0:
+                from app.core.exceptions import InvalidStatusTransitionException
+
+                raise InvalidStatusTransitionException(
+                    session.status.value,
+                    to_status.value,
+                    [],
+                    'Session total must be greater than 0',
+                )
+
             # Calculate payment deadline (5 days from today)
             session.payment_deadline = date.today() + timedelta(
                 days=settings.PAYMENT_DEADLINE_DAYS
@@ -357,7 +471,7 @@ class SessionService:
             )
 
         elif to_status == SessionStatus.CONFIRMED:
-            # Validate deposit has been paid
+            # VALIDATION: Deposit payment must be verified
             if session.paid_amount < session.deposit_amount:
                 raise InsufficientBalanceException(
                     session.id,
@@ -365,7 +479,43 @@ class SessionService:
                     0.0,
                 )
 
+        elif to_status == SessionStatus.ASSIGNED:
+            # VALIDATION: At least one photographer must be assigned
+            photographer_repo = SessionPhotographerRepository(self.db)
+            photographers = await photographer_repo.list_by_session(session.id)
+            if not photographers:
+                from app.core.exceptions import InvalidStatusTransitionException
+
+                raise InvalidStatusTransitionException(
+                    session.status.value,
+                    to_status.value,
+                    [],
+                    'Session must have at least one photographer assigned before transitioning to ASSIGNED',
+                )
+
+            # VALIDATION: Studio sessions must have a room assigned
+            if session.session_type == SessionType.STUDIO and not session.room_id:
+                from app.core.exceptions import InvalidStatusTransitionException
+
+                raise InvalidStatusTransitionException(
+                    session.status.value,
+                    to_status.value,
+                    [],
+                    'Studio session must have a room assigned',
+                )
+
         elif to_status == SessionStatus.IN_EDITING:
+            # VALIDATION: Editor must be assigned
+            if not session.editing_assigned_to:
+                from app.core.exceptions import InvalidStatusTransitionException
+
+                raise InvalidStatusTransitionException(
+                    session.status.value,
+                    to_status.value,
+                    [],
+                    'Session must have an editor assigned before transitioning to IN_EDITING',
+                )
+
             # Calculate delivery deadline (based on editing days)
             editing_days = settings.DEFAULT_EDITING_DAYS
             session.delivery_deadline = date.today() + timedelta(days=editing_days)
@@ -380,12 +530,15 @@ class SessionService:
                 session.editing_completed_at = get_current_utc_time()
 
         elif to_status == SessionStatus.COMPLETED:
-            # Validate full payment
+            # VALIDATION: Full payment must be received
+            # Even though business_rules_doc.md marks this as optional,
+            # we enforce it to ensure clients have paid in full before delivery
             if session.paid_amount < session.total_amount:
+                remaining = session.total_amount - session.paid_amount
                 raise InsufficientBalanceException(
                     session.id,
-                    float(session.total_amount - session.paid_amount),
-                    0.0,
+                    float(remaining),
+                    float(session.total_amount),
                 )
 
             # Record delivery
@@ -550,17 +703,75 @@ class SessionService:
         self, session_id: int, editor_id: int, assigned_by: int
     ) -> SessionModel:
         """
-        Assign an editor to a session.
+        Assign an editor to a session and auto-transition to IN_EDITING.
 
-        Typically done when transitioning to IN_EDITING status.
+        When an editor is assigned to an ATTENDED session:
+        - Sets editing_assigned_to field FIRST (committed to DB)
+        - Automatically transitions session from ATTENDED to IN_EDITING
+        - Records editing_started_at timestamp (via transition logic)
+        - Calculates delivery_deadline (via transition logic)
+        - This order ensures the validation can find the editor assignment
+
+        This ensures the editing phase starts immediately when editor is assigned.
         """
         session = await self.get_session(session_id)
 
+        # Assign editor FIRST
         session.editing_assigned_to = editor_id
         self.db.add(session)
+        # IMPORTANT: Commit immediately so the editor assignment exists in DB
+        # before the transition validation runs
         await self.db.commit()
         await self.db.refresh(session)
 
+        # Auto-transition to IN_EDITING if session is ATTENDED
+        # This will now pass validation because editor is assigned in DB
+        if session.status == SessionStatus.ATTENDED:
+            await self.transition_status(
+                session_id=session_id,
+                to_status=SessionStatus.IN_EDITING,
+                changed_by=assigned_by,
+                reason='Editor assigned to session',
+                notes=f'Editor ID {editor_id} assigned for post-processing',
+            )
+
+        # Refresh to get any updates from the transition
+        await self.db.refresh(session)
+
+        return session
+
+    async def mark_ready_for_delivery(
+        self, session_id: int, marked_by: int, notes: str | None = None
+    ) -> SessionModel:
+        """
+        Mark a session as ready for delivery (editor completed editing).
+
+        Automatically transitions from IN_EDITING to READY_FOR_DELIVERY status.
+
+        Validates:
+        - Session must be in IN_EDITING status
+        - User marking must be the assigned editor (or admin/coordinator)
+        """
+        session = await self.get_session(session_id)
+
+        # Validate session is in IN_EDITING status
+        if session.status != SessionStatus.IN_EDITING:
+            raise InvalidStatusTransitionException(
+                session.status.value,
+                SessionStatus.READY_FOR_DELIVERY.value,
+                [SessionStatus.IN_EDITING.value],
+            )
+
+        # Transition to READY_FOR_DELIVERY
+        await self.transition_status(
+            session_id=session_id,
+            to_status=SessionStatus.READY_FOR_DELIVERY,
+            changed_by=marked_by,
+            reason='Editor marked session as ready for delivery',
+            notes=notes,
+        )
+
+        await self.db.refresh(session)
         return session
 
 
@@ -752,11 +963,15 @@ class SessionPaymentService:
         self, data: SessionPaymentCreate, created_by: int
     ) -> SessionPayment:
         """
-        Record a payment for a session.
+        Record a payment for a session and update financial calculations.
 
         Validates:
         - Session exists
         - Payment amount does not exceed remaining balance
+
+        Auto-updates:
+        - paid_amount: Adds new payment to total paid
+        - balance_amount: Recalculates remaining balance (total - paid)
         """
         # Validate session
         session = await self.session_repo.get_by_id(data.session_id)
@@ -785,13 +1000,16 @@ class SessionPaymentService:
         )
 
         payment = await self.repo.create(payment)
-        await self.db.commit()
-        await self.db.refresh(payment)
+        await self.db.flush()
 
-        # Update session paid_amount
+        # Update session financial fields
         session.paid_amount += data.amount
+        # Recalculate balance: total - paid (this replaces the previous deposit-based calculation)
+        session.balance_amount = session.total_amount - session.paid_amount
+
         self.db.add(session)
         await self.db.commit()
+        await self.db.refresh(payment)
 
         return payment
 
@@ -815,7 +1033,12 @@ class SessionPhotographerService:
         self, data: SessionPhotographerAssign, assigned_by: int
     ) -> SessionPhotographer:
         """
-        Assign a photographer to a session.
+        Assign a photographer to a session and auto-transition to ASSIGNED.
+
+        When a photographer is assigned to a CONFIRMED session:
+        - Creates photographer assignment record FIRST (committed to DB)
+        - Automatically transitions session from CONFIRMED to ASSIGNED
+        - This order ensures the validation can find the photographer
 
         Validates:
         - Session exists
@@ -838,7 +1061,7 @@ class SessionPhotographerService:
                     session.session_time,
                 )
 
-        # Create assignment
+        # Create assignment FIRST
         assignment = SessionPhotographer(
             session_id=data.session_id,
             photographer_id=data.photographer_id,
@@ -847,15 +1070,39 @@ class SessionPhotographerService:
         )
 
         assignment = await self.repo.create(assignment)
+        # IMPORTANT: Commit immediately so the assignment exists in DB
+        # before the transition validation runs
         await self.db.commit()
+        await self.db.refresh(assignment)
+
+        # Auto-transition to ASSIGNED if session is CONFIRMED
+        # This will now pass validation because photographer exists in DB
+        if session.status == SessionStatus.CONFIRMED:
+            from app.sessions.service import SessionService
+
+            session_service = SessionService(self.db)
+            await session_service.transition_status(
+                session_id=data.session_id,
+                to_status=SessionStatus.ASSIGNED,
+                changed_by=assigned_by,
+                reason='Photographer assigned to session',
+                notes=f'Photographer ID {data.photographer_id} assigned for photography',
+            )
+
+        # Refresh assignment to get any updates from the transition
         await self.db.refresh(assignment)
 
         return assignment
 
     async def mark_attended(
-        self, assignment_id: int, notes: str | None = None
+        self, assignment_id: int, marked_by: int, notes: str | None = None
     ) -> SessionPhotographer:
-        """Mark photographer assignment as attended."""
+        """
+        Mark photographer assignment as attended.
+
+        When a photographer marks themselves as attended, the session
+        automatically transitions to ATTENDED status if not already in that state.
+        """
         assignment = await self.repo.get_by_id(assignment_id)
         if not assignment:
             raise SessionNotFoundException(assignment_id)
@@ -864,10 +1111,60 @@ class SessionPhotographerService:
             assignment.notes = notes
 
         assignment = await self.repo.mark_attended(assignment)
+        await self.db.flush()
+
+        # Auto-transition session to ATTENDED status
+        session = await self.session_repo.get_by_id(assignment.session_id)
+        if session and session.status == SessionStatus.ASSIGNED:
+            # Use SessionService to transition with proper business logic
+            from app.sessions.service import SessionService
+
+            session_service = SessionService(self.db)
+            await session_service.transition_status(
+                session_id=assignment.session_id,
+                to_status=SessionStatus.ATTENDED,
+                changed_by=marked_by,
+                reason='Photographer marked as attended',
+                notes=notes,
+            )
+
         await self.db.commit()
         await self.db.refresh(assignment)
 
         return assignment
+
+    async def mark_my_attendance(
+        self, session_id: int, photographer_id: int, marked_by: int, notes: str | None = None
+    ) -> SessionPhotographer:
+        """
+        Mark photographer attendance for the current user (simplified endpoint).
+
+        This method is designed for photographers to mark their own attendance
+        without needing to know their assignment_id.
+
+        Validates:
+        - Session exists
+        - Photographer is assigned to this session
+
+        Automatically transitions session to ATTENDED status.
+        """
+        from app.core.exceptions import PhotographerNotAssignedException
+
+        # Validate session exists
+        session = await self.session_repo.get_by_id(session_id)
+        if not session:
+            raise SessionNotFoundException(session_id)
+
+        # Find the photographer's assignment for this session
+        assignment = await self.repo.get_by_session_and_photographer(
+            session_id, photographer_id
+        )
+
+        if not assignment:
+            raise PhotographerNotAssignedException(photographer_id, session_id)
+
+        # Delegate to existing mark_attended method
+        return await self.mark_attended(assignment.id, marked_by, notes)
 
     async def remove_assignment(self, assignment_id: int) -> None:
         """Remove photographer assignment."""

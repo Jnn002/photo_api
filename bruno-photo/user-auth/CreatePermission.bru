@@ -1,7 +1,7 @@
 meta {
   name: CreatePermission
   type: http
-  seq: 17
+  seq: 19
 }
 
 post {
@@ -16,10 +16,10 @@ headers {
 
 body:json {
   {
-    "code": "test.read",
-    "name": "Creación de permiso lectura test",
-    "description": "descripción 2",
-    "module": "test"
+    "code": "room.view",
+    "name": "Ver rooms",
+    "description": "Permite visualizar room",
+    "module": "room"
   }
 }
 

@@ -5,9 +5,13 @@ meta {
 }
 
 post {
-  url: {{back}}/sessions/1/payments
+  url: {{back}}/sessions/:session_id/payments
   body: json
   auth: inherit
+}
+
+params:path {
+  session_id: {{session_id}}
 }
 
 headers {
@@ -16,12 +20,12 @@ headers {
 
 body:json {
   {
-    "session_id": 1,
+    "session_id": {{session_id}},
     "payment_type": "Deposit",
     "payment_method": "Transfer",
-    "amount": "250.00",
+    "amount": "1200.00",
     "transaction_reference": "TRX-2025-001",
-    "payment_date": "2025-10-15",
+    "payment_date": "2025-10-14",
     "notes": "Depósito inicial 50%"
   }
 }
@@ -30,7 +34,7 @@ tests {
   test("should return 201", function() {
     expect(res.status).to.equal(201);
   });
-
+  
   test("should return payment data", function() {
     const data = res.body;
     expect(data).to.have.property('id');

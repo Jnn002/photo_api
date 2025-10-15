@@ -1,0 +1,41 @@
+meta {
+  name: List Rooms - Page 2
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{back}}/rooms?limit=5&offset=5
+  body: none
+  auth: inherit
+}
+
+params:query {
+  limit: 5
+  offset: 5
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("should return second page of rooms", function() {
+    const data = res.body;
+    expect(data).to.have.property('items');
+    expect(data.offset).to.equal(5);
+    expect(data.limit).to.equal(5);
+  });
+
+  test("pagination metadata should be valid", function() {
+    const data = res.body;
+    expect(data).to.have.property('total');
+    expect(data).to.have.property('has_more');
+    const itemsShown = data.offset + data.items.length;
+    expect(data.has_more).to.equal(itemsShown < data.total);
+  });
+}

@@ -5,9 +5,13 @@ meta {
 }
 
 post {
-  url: {{back}}/sessions/1/recalculate
+  url: {{back}}/sessions/:session_id/recalculate
   body: none
   auth: inherit
+}
+
+params:path {
+  session_id: {{session_id}}
 }
 
 headers {
@@ -18,14 +22,14 @@ tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("should return updated financial totals", function() {
     const data = res.body;
     expect(data).to.have.property('total_amount');
     expect(data).to.have.property('deposit_amount');
     expect(data).to.have.property('balance_amount');
     expect(data).to.have.property('paid_amount');
-
+  
     // Verify deposit is 50% of total
     const total = parseFloat(data.total_amount);
     const deposit = parseFloat(data.deposit_amount);

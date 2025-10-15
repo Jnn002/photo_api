@@ -12,10 +12,12 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import Field
 
 from app.core.dependencies import SessionDep
 from app.core.enums import SessionStatus
 from app.core.permissions import require_permission
+from app.core.schemas import PaginatedResponse
 from app.sessions.models import (
     Session as SessionModel,
 )
@@ -29,6 +31,8 @@ from app.sessions.schemas import (
     SessionCancellation,
     SessionCreate,
     SessionDetailPublic,
+    SessionEditorAssignment,
+    SessionMarkReady,
     SessionPaymentCreate,
     SessionPaymentPublic,
     SessionPhotographerAssign,
@@ -95,7 +99,7 @@ async def create_session(
 
 @sessions_router.get(
     '',
-    response_model=list[SessionPublic],
+    response_model=PaginatedResponse[SessionPublic],
     status_code=status.HTTP_200_OK,
     summary='List sessions',
     description='Get paginated list of sessions with optional filters. Requires session.view.all permission.',
@@ -122,9 +126,9 @@ async def list_sessions(
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=100, description='Maximum number of results')
-    ] = 100,
+    ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list[SessionModel]:
+) -> PaginatedResponse[SessionPublic]:
     """
     List sessions with pagination and optional filters.
 
@@ -135,13 +139,20 @@ async def list_sessions(
     - end_date: Filter until this date (inclusive)
     - photographer_id: Filter by assigned photographer
     - editor_id: Filter by assigned editor
-    - limit: Maximum results (1-100, default: 100)
+    - limit: Maximum results (1-100, default: 50)
     - offset: Skip results for pagination (default: 0)
+
+    **Response:**
+    - items: List of sessions for the current page
+    - total: Total number of sessions matching filters
+    - limit: Maximum items per page
+    - offset: Number of items skipped
+    - has_more: Whether there are more sessions beyond this page
 
     **Permissions required:** session.view.all
     """
     service = SessionService(db)
-    return await service.list_sessions(
+    sessions = await service.list_sessions(
         client_id=client_id,
         status=status_filter,
         start_date=start_date,
@@ -150,6 +161,160 @@ async def list_sessions(
         editor_id=editor_id,
         limit=limit,
         offset=offset,
+    )
+    total = await service.count_sessions(
+        client_id=client_id,
+        status=status_filter,
+        start_date=start_date,
+        end_date=end_date,
+        photographer_id=photographer_id,
+        editor_id=editor_id,
+    )
+
+    return PaginatedResponse(
+        items=sessions,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(sessions)) < total,
+    )
+
+
+@sessions_router.get(
+    '/my-assignments',
+    response_model=PaginatedResponse[SessionPublic],
+    status_code=status.HTTP_200_OK,
+    summary='List my assigned sessions (Photographer)',
+    description='Get sessions assigned to current photographer. Requires session.view.own permission.',
+)
+async def list_my_assignments(
+    db: SessionDep,
+    current_user: Annotated[User, Depends(require_permission('session.view.own'))],
+    status_filter: Annotated[
+        SessionStatus | None,
+        Query(description='Filter by session status', alias='status'),
+    ] = None,
+    start_date: Annotated[
+        date | None, Query(description='Filter by start date (inclusive)')
+    ] = None,
+    end_date: Annotated[
+        date | None, Query(description='Filter by end date (inclusive)')
+    ] = None,
+    limit: Annotated[
+        int, Query(ge=1, le=100, description='Maximum number of results')
+    ] = 50,
+    offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
+) -> PaginatedResponse[SessionPublic]:
+    """
+    List sessions assigned to the current photographer.
+
+    **Query parameters:**
+    - status: Filter by session status (optional)
+    - start_date: Filter from this date (inclusive, optional)
+    - end_date: Filter until this date (inclusive, optional)
+    - limit: Maximum results (1-100, default: 50)
+    - offset: Skip results for pagination (default: 0)
+
+    **Response:**
+    - items: List of sessions for the current page
+    - total: Total number of sessions matching filters
+    - limit: Maximum items per page
+    - offset: Number of items skipped
+    - has_more: Whether there are more sessions beyond this page
+
+    **Permissions required:** session.view.own
+    """
+    service = SessionService(db)
+    sessions = await service.list_my_photographer_assignments(
+        photographer_id=current_user.id,  # type: ignore
+        status=status_filter,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+        offset=offset,
+    )
+    total = await service.count_sessions(
+        photographer_id=current_user.id,  # type: ignore
+        status=status_filter,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    return PaginatedResponse(
+        items=sessions,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(sessions)) < total,
+    )
+
+
+@sessions_router.get(
+    '/my-editing',
+    response_model=PaginatedResponse[SessionPublic],
+    status_code=status.HTTP_200_OK,
+    summary='List my editing assignments (Editor)',
+    description='Get sessions assigned to current editor. Requires session.view.own permission.',
+)
+async def list_my_editing(
+    db: SessionDep,
+    current_user: Annotated[User, Depends(require_permission('session.view.own'))],
+    status_filter: Annotated[
+        SessionStatus | None,
+        Query(description='Filter by session status', alias='status'),
+    ] = None,
+    start_date: Annotated[
+        date | None, Query(description='Filter by start date (inclusive)')
+    ] = None,
+    end_date: Annotated[
+        date | None, Query(description='Filter by end date (inclusive)')
+    ] = None,
+    limit: Annotated[
+        int, Query(ge=1, le=100, description='Maximum number of results')
+    ] = 50,
+    offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
+) -> PaginatedResponse[SessionPublic]:
+    """
+    List sessions assigned to the current editor.
+
+    **Query parameters:**
+    - status: Filter by session status (optional, default: IN_EDITING)
+    - start_date: Filter from this date (inclusive, optional)
+    - end_date: Filter until this date (inclusive, optional)
+    - limit: Maximum results (1-100, default: 50)
+    - offset: Skip results for pagination (default: 0)
+
+    **Response:**
+    - items: List of sessions for the current page
+    - total: Total number of sessions matching filters
+    - limit: Maximum items per page
+    - offset: Number of items skipped
+    - has_more: Whether there are more sessions beyond this page
+
+    **Permissions required:** session.view.own
+    """
+    service = SessionService(db)
+    sessions = await service.list_my_editor_assignments(
+        editor_id=current_user.id,  # type: ignore
+        status=status_filter,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+        offset=offset,
+    )
+    total = await service.count_sessions(
+        editor_id=current_user.id,  # type: ignore
+        status=status_filter,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    return PaginatedResponse(
+        items=sessions,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(sessions)) < total,
     )
 
 
@@ -161,7 +326,7 @@ async def list_sessions(
     description='Get detailed session information by ID. Requires session.view.all permission.',
 )
 async def get_session(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.view.all'))],
 ) -> SessionModel:
@@ -185,7 +350,7 @@ async def get_session(
     description='Update session information. Requires session.edit.pre-assigned permission.',
 )
 async def update_session(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionUpdate,
     db: SessionDep,
     current_user: Annotated[
@@ -215,7 +380,6 @@ async def update_session(
 
     **Permissions required:** session.edit.pre-assigned
     """
-    # TODO: VERIFY CHANGES DEADLINE LOGIC
     service = SessionService(db)
     return await service.update_session(session_id, data, updated_by=current_user.id)  # type: ignore
 
@@ -231,7 +395,7 @@ async def update_session(
     description='Transition session to a new status. Requires session.transition permission.',
 )
 async def transition_status(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionStatusTransition,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.edit.all'))],
@@ -266,7 +430,6 @@ async def transition_status(
 
     **Permissions required:** session.transition
     """
-    # TODO: MANAGE PERMISSION AND LOGIC FOR EACH TRANSITION
     service = SessionService(db)
     return await service.transition_status(
         session_id,
@@ -285,7 +448,7 @@ async def transition_status(
     description='Cancel session with refund calculation. Requires session.cancel permission.',
 )
 async def cancel_session(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionCancellation,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.cancel'))],
@@ -316,6 +479,101 @@ async def cancel_session(
     )
 
 
+@sessions_router.post(
+    '/{session_id}/mark-ready',
+    response_model=SessionPublic,
+    status_code=status.HTTP_200_OK,
+    summary='Mark session ready for delivery (Editor)',
+    description='Mark session as ready for delivery (editor completed editing). Requires session.mark-ready permission.',
+)
+async def mark_session_ready(
+    session_id: Annotated[int, Field(gt=0)],
+    data: SessionMarkReady,
+    db: SessionDep,
+    current_user: Annotated[User, Depends(require_permission('session.mark-ready'))],
+) -> SessionModel:
+    """
+    Mark a session as ready for delivery (editor completed editing).
+
+    **Important:** This automatically transitions the session from IN_EDITING to READY_FOR_DELIVERY status.
+
+    **Path parameters:**
+    - session_id: Session ID to mark as ready
+
+    **Request body:**
+    - notes: Additional notes (optional)
+
+    **Business logic:**
+    - Session must be in IN_EDITING status
+    - Automatically transitions to READY_FOR_DELIVERY
+    - Records editing_completed_at timestamp
+    - Records status change in history
+
+    **Permissions required:** session.mark-ready
+
+    **Use case:**
+    - Editor finishes editing photos/videos for a session
+    - Marks session as ready so coordinator can deliver to client
+    """
+    service = SessionService(db)
+    return await service.mark_ready_for_delivery(
+        session_id=session_id,
+        marked_by=current_user.id,  # type: ignore
+        notes=data.notes,
+    )
+
+
+@sessions_router.post(
+    '/{session_id}/assign-editor',
+    response_model=SessionPublic,
+    status_code=status.HTTP_200_OK,
+    summary='Assign editor to session',
+    description='Assign an editor to a session for editing phase. Requires session.assign-resources permission.',
+)
+async def assign_editor_to_session(
+    session_id: Annotated[int, Field(gt=0)],
+    data: SessionEditorAssignment,
+    db: SessionDep,
+    current_user: Annotated[
+        User, Depends(require_permission('session.assign-resources'))
+    ],
+) -> SessionModel:
+    """
+    Assign an editor to a session for the editing phase.
+
+    **Path parameters:**
+    - session_id: Session ID to assign editor to
+
+    **Request body:**
+    - editor_id: User ID of the editor to assign
+
+    **Business logic:**
+    - Typically done when session is in ATTENDED status
+    - Editor will be responsible for editing photos/videos
+    - Session should be transitioned to IN_EDITING after assignment
+
+    **Permissions required:** session.assign-resources
+
+    **Use case:**
+    1. Session has been attended by photographer
+    2. Coordinator assigns an editor for post-processing
+    3. Editor can now see session in their /sessions/my-editing list
+    4. Coordinator transitions session to IN_EDITING status
+
+    **Workflow:**
+    - POST /sessions/{id}/assign-editor (this endpoint)
+    - POST /sessions/{id}/transition with to_status=IN_EDITING
+    - Editor works on editing
+    - POST /sessions/{id}/mark-ready when complete
+    """
+    service = SessionService(db)
+    return await service.assign_editor(
+        session_id=session_id,
+        editor_id=data.editor_id,
+        assigned_by=current_user.id,  # type: ignore
+    )
+
+
 # ==================== Session Details (Line Items) Router ====================
 
 
@@ -327,8 +585,8 @@ async def cancel_session(
     description='Add an individual item to session. Requires session.edit permission.',
 )
 async def add_item_to_session(
-    session_id: int,
-    item_id: int,
+    session_id: Annotated[int, Field(gt=0)],
+    item_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.edit.all'))],
     quantity: Annotated[int, Query(ge=1, description='Quantity of item')] = 1,
@@ -350,7 +608,6 @@ async def add_item_to_session(
 
     **Permissions required:** session.edit
     """
-    # TODO: VERIFY PERMISSIONS
     service = SessionDetailService(db)
     detail = await service.add_item_to_session(
         session_id,
@@ -371,13 +628,13 @@ async def add_item_to_session(
     response_model=list[SessionDetailPublic],
     status_code=status.HTTP_201_CREATED,
     summary='Add package to session',
-    description='Add a package to session (package explosion). Requires session.edit permission.',
+    description='Add a package to session (package explosion). Requires session.edit.all permission.',
 )
 async def add_package_to_session(
-    session_id: int,
-    package_id: int,
+    session_id: Annotated[int, Field(gt=0)],
+    package_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.edit'))],
+    current_user: Annotated[User, Depends(require_permission('session.edit.all'))],
 ) -> list[SessionDetail]:
     """
     Add a package to a session (PACKAGE EXPLOSION pattern).
@@ -393,7 +650,7 @@ async def add_package_to_session(
     - Each item in package is denormalized into a separate SessionDetail record
     - This ensures historical immutability (changing package doesn't affect past sessions)
 
-    **Permissions required:** session.edit
+    **Permissions required:** session.edit.all
     """
     service = SessionDetailService(db)
     details = await service.add_package_to_session(
@@ -417,9 +674,9 @@ async def add_package_to_session(
     description='Get all line items for a session. Requires session.view permission.',
 )
 async def list_session_details(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.view'))],
+    current_user: Annotated[User, Depends(require_permission('session.view.all'))],
 ) -> list[SessionDetail]:
     """
     List all line items (details) for a session.
@@ -440,8 +697,8 @@ async def list_session_details(
     description='Remove a line item from session. Requires session.edit permission.',
 )
 async def remove_session_detail(
-    session_id: int,
-    detail_id: int,
+    session_id: Annotated[int, Field(gt=0)],
+    detail_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.edit'))],
 ) -> None:
@@ -473,9 +730,9 @@ async def remove_session_detail(
     description='Recalculate all financial totals from details. Requires session.edit permission.',
 )
 async def recalculate_session_totals(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.edit'))],
+    current_user: Annotated[User, Depends(require_permission('session.edit.all'))],
 ) -> SessionModel:
     """
     Recalculate all financial totals for a session.
@@ -489,7 +746,7 @@ async def recalculate_session_totals(
     - balance_amount: total - deposit
     - paid_amount: Sum of all payments minus refunds
 
-    **Permissions required:** session.edit
+    **Permissions required:** session.edit.all
     """
     service = SessionService(db)
     return await service.recalculate_totals(session_id)
@@ -506,7 +763,7 @@ async def recalculate_session_totals(
     description='Record a payment for a session. Requires session.payment permission.',
 )
 async def record_payment(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionPaymentCreate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.payment'))],
@@ -543,7 +800,7 @@ async def record_payment(
     description='Get all payments for a session. Requires session.view permission.',
 )
 async def list_session_payments(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.view'))],
 ) -> list[SessionPayment]:
@@ -567,16 +824,20 @@ async def list_session_payments(
     response_model=SessionPhotographerPublic,
     status_code=status.HTTP_201_CREATED,
     summary='Assign photographer',
-    description='Assign a photographer to a session. Requires session.assign permission.',
+    description='Assign a photographer to a session. Requires session.assign-resources permission.',
 )
 async def assign_photographer(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     data: SessionPhotographerAssign,
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.assign'))],
+    current_user: Annotated[
+        User, Depends(require_permission('session.assign-resources'))
+    ],
 ) -> SessionPhotographer:
     """
     Assign a photographer to a session.
+
+    **Important:** This automatically transitions the session from CONFIRMED to ASSIGNED status.
 
     **Path parameters:**
     - session_id: Session ID
@@ -585,10 +846,15 @@ async def assign_photographer(
     - photographer_id: User ID of photographer
     - role: Role (Lead/Assistant) - optional
 
+    **Business logic:**
+    - Creates photographer assignment
+    - If session is in CONFIRMED status, automatically transitions to ASSIGNED
+    - Records status change in history
+
     **Business rules:**
     - Photographer availability is validated (not double-booked)
 
-    **Permissions required:** session.assign
+    **Permissions required:** session.assign-resources
     """
     service = SessionPhotographerService(db)
     return await service.assign_photographer(data, assigned_by=current_user.id)  # type: ignore
@@ -602,9 +868,9 @@ async def assign_photographer(
     description='Get all photographer assignments for a session. Requires session.view permission.',
 )
 async def list_session_photographers(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.view'))],
+    current_user: Annotated[User, Depends(require_permission('session.view.all'))],
 ) -> list[SessionPhotographer]:
     """
     List all photographer assignments for a session.
@@ -612,7 +878,7 @@ async def list_session_photographers(
     **Path parameters:**
     - session_id: Session ID
 
-    **Permissions required:** session.view
+    **Permissions required:** session.view.all
     """
     service = SessionPhotographerService(db)
     return await service.list_session_photographers(session_id)
@@ -623,17 +889,19 @@ async def list_session_photographers(
     response_model=SessionPhotographerPublic,
     status_code=status.HTTP_200_OK,
     summary='Mark photographer attended',
-    description='Mark photographer as attended. Requires session.attend permission.',
+    description='Mark photographer as attended and auto-transition session to ATTENDED. Requires session.mark-attended permission.',
 )
 async def mark_photographer_attended(
-    session_id: int,
-    assignment_id: int,
+    session_id: Annotated[int, Field(gt=0)],
+    assignment_id: Annotated[int, Field(gt=0)],
     data: SessionPhotographerUpdate,
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.attend'))],
+    current_user: Annotated[User, Depends(require_permission('session.mark-attended'))],
 ) -> SessionPhotographer:
     """
     Mark a photographer assignment as attended.
+
+    **Important:** This automatically transitions the session from ASSIGNED to ATTENDED status.
 
     **Path parameters:**
     - session_id: Session ID
@@ -643,23 +911,88 @@ async def mark_photographer_attended(
     - attended: True to mark as attended
     - notes: Session notes (optional)
 
-    **Permissions required:** session.attend
+    **Business logic:**
+    - Marks the photographer as attended
+    - If session is in ASSIGNED status, automatically transitions to ATTENDED
+    - Records status change in history
+
+    **Permissions required:** session.mark-attended
     """
     service = SessionPhotographerService(db)
-    return await service.mark_attended(assignment_id, notes=data.notes)
+    return await service.mark_attended(
+        assignment_id,
+        marked_by=current_user.id,  # type: ignore
+        notes=data.notes,  # type: ignore
+    )
+
+
+@sessions_router.patch(
+    '/{session_id}/my-attendance',
+    response_model=SessionPhotographerPublic,
+    status_code=status.HTTP_200_OK,
+    summary='Mark my attendance (Photographer - Simplified)',
+    description='Mark attendance for current photographer without needing assignment_id. Requires session.mark-attended permission.',
+)
+async def mark_my_attendance(
+    session_id: Annotated[int, Field(gt=0)],
+    data: SessionPhotographerUpdate,
+    db: SessionDep,
+    current_user: Annotated[User, Depends(require_permission('session.mark-attended'))],
+) -> SessionPhotographer:
+    """
+    Mark attendance for the current photographer (simplified endpoint).
+
+    **Simplified endpoint for photographers** - only requires session_id.
+    The backend automatically finds the photographer's assignment using the authenticated user.
+
+    **Important:** This automatically transitions the session from ASSIGNED to ATTENDED status.
+
+    **Path parameters:**
+    - session_id: Session ID
+
+    **Request body:**
+    - attended: True to mark as attended
+    - notes: Session notes (optional)
+
+    **Business logic:**
+    - Finds photographer assignment for current user
+    - Marks the photographer as attended
+    - If session is in ASSIGNED status, automatically transitions to ATTENDED
+    - Records status change in history
+
+    **Permissions required:** session.mark-attended
+
+    **Use case:**
+    - Photographer completes a photography session
+    - Frontend only needs session_id (from /sessions/my-assignments list)
+    - Photographer marks attendance with a single call
+
+    **Error cases:**
+    - 404: Photographer is not assigned to this session
+    - 404: Session not found
+    """
+    service = SessionPhotographerService(db)
+    return await service.mark_my_attendance(
+        session_id=session_id,
+        photographer_id=current_user.id,  # type: ignore
+        marked_by=current_user.id,  # type: ignore
+        notes=data.notes,
+    )
 
 
 @sessions_router.delete(
     '/{session_id}/photographers/{assignment_id}',
     status_code=status.HTTP_204_NO_CONTENT,
     summary='Remove photographer assignment',
-    description='Remove a photographer from a session. Requires session.assign permission.',
+    description='Remove a photographer from a session. Requires session.assign-resources permission.',
 )
 async def remove_photographer_assignment(
-    session_id: int,
-    assignment_id: int,
+    session_id: Annotated[int, Field(gt=0)],
+    assignment_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.assign'))],
+    current_user: Annotated[
+        User, Depends(require_permission('session.assign-resources'))
+    ],
 ) -> None:
     """
     Remove a photographer assignment from a session.
@@ -668,7 +1001,7 @@ async def remove_photographer_assignment(
     - session_id: Session ID
     - assignment_id: Assignment ID to remove
 
-    **Permissions required:** session.assign
+    **Permissions required:** session.assign-resources
     """
     service = SessionPhotographerService(db)
     await service.remove_assignment(assignment_id)
@@ -682,12 +1015,12 @@ async def remove_photographer_assignment(
     response_model=list[SessionStatusHistoryPublic],
     status_code=status.HTTP_200_OK,
     summary='Get session status history',
-    description='Get status change history for a session. Requires session.view permission.',
+    description='Get status change history for a session. Requires session.view.all permission.',
 )
 async def get_session_status_history(
-    session_id: int,
+    session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.view'))],
+    current_user: Annotated[User, Depends(require_permission('session.view.all'))],
 ) -> list[SessionStatusHistory]:
     """
     Get status change history for a session.
@@ -698,7 +1031,7 @@ async def get_session_status_history(
     **Returns:**
     - Ordered list of all status changes with timestamps and reasons
 
-    **Permissions required:** session.view
+    **Permissions required:** session.view.all
     """
     service = SessionService(db)
     await service.get_session(session_id)  # Validate session exists

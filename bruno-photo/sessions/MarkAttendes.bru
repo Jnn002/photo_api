@@ -1,0 +1,61 @@
+meta {
+  name: MarkAttendes
+  type: http
+  seq: 14
+}
+
+patch {
+  url: {{back}}/sessions/:session_id/photographers/:assign_id/attended
+  body: json
+  auth: inherit
+}
+
+params:path {
+  session_id: 11
+  assign_id: 7
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "attended": true,
+    "notes": "Sesión atendida con éxito"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  **Mark photographer as attended (Auto-transitions session to ATTENDED)**
+  
+  Permission required: `session.mark-attended`
+  
+  **Path Parameters:**
+  - session_id: ID of the session
+  - assign_id: ID of the photographer assignment
+  
+  **Body Parameters:**
+  - attended: Set to true to mark as attended
+  - notes: Optional notes about the session
+  
+  **Important - Automatic Transition:**
+  When a photographer marks themselves as attended:
+  - The photographer assignment is marked as attended
+  - If the session status is ASSIGNED, it automatically transitions to ATTENDED
+  - The status change is recorded in history
+  
+  **Use case:**
+  1. Photographer attends a session
+  2. Calls this endpoint to confirm attendance
+  3. Session automatically moves from ASSIGNED → ATTENDED
+  4. Session is now ready for editing phase
+  
+  **Note:**
+  - This is typically called by the photographer themselves
+  - Coordinators can also mark attendance on behalf of photographers
+}

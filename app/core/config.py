@@ -60,8 +60,18 @@ class Settings(BaseSettings):
     DEFAULT_EDITING_DAYS: int = 5
     DEFAULT_DEPOSIT_PERCENTAGE: int = 50
 
-    # CORS
+    # CORS Configuration
     CORS_ORIGINS: list[str] = ['http://localhost:4200', 'http://localhost:3000']
+    CORS_ALLOW_CREDENTIALS: bool = True
+    CORS_ALLOW_METHODS: list[str] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+    CORS_ALLOW_HEADERS: list[str] = [
+        'Authorization',
+        'Content-Type',
+        'Accept',
+        'Origin',
+        'X-Requested-With',
+    ]
+    CORS_EXPOSE_HEADERS: list[str] = ['X-Total-Count']
 
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20

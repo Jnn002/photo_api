@@ -10,6 +10,7 @@ This module exposes REST endpoints for:
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import Field
 
 from app.catalog.models import Item, Package, Room
 from app.catalog.schemas import (
@@ -30,6 +31,7 @@ from app.catalog.service import ItemService, PackageService, RoomService
 from app.core.dependencies import SessionDep
 from app.core.enums import ItemType, SessionType
 from app.core.permissions import require_permission
+from app.core.schemas import PaginatedResponse
 from app.users.models import User
 
 # ==================== Items Router ====================
@@ -71,14 +73,14 @@ async def create_item(
 
 @items_router.get(
     '',
-    response_model=list[ItemPublic],
+    response_model=PaginatedResponse[ItemPublic],
     status_code=status.HTTP_200_OK,
     summary='List items',
     description='Get paginated list of items with optional filters. Requires item.view permission.',
 )
 async def list_items(
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('item.create'))],
+    current_user: Annotated[User, Depends(require_permission('item.view'))],
     active_only: Annotated[
         bool, Query(description='Filter for active items only')
     ] = False,
@@ -88,23 +90,41 @@ async def list_items(
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=100, description='Maximum number of results')
-    ] = 100,
+    ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list[Item]:
+) -> PaginatedResponse[ItemPublic]:
     """
     List items with pagination and optional filters.
 
     **Query parameters:**
     - active_only: If true, return only active items (default: false)
     - item_type: Filter by type (Photo/Video/Album/etc.)
-    - limit: Maximum number of items to return (1-100, default: 100)
+    - limit: Maximum number of items to return (1-100, default: 50)
     - offset: Number of items to skip for pagination (default: 0)
+
+    **Response:**
+    - items: List of items for the current page
+    - total: Total number of items matching filters
+    - limit: Maximum items per page
+    - offset: Number of items skipped
+    - has_more: Whether there are more items beyond this page
+    - current_page: Current page number (computed)
+    - total_pages: Total number of pages (computed)
 
     **Permissions required:** item.view
     """
     service = ItemService(db)
-    return await service.list_items(
+    items = await service.list_items(
         active_only=active_only, item_type=item_type, limit=limit, offset=offset
+    )
+    total = await service.count_items(active_only=active_only, item_type=item_type)
+
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(items)) < total,
     )
 
 
@@ -113,12 +133,12 @@ async def list_items(
     response_model=ItemPublic,
     status_code=status.HTTP_200_OK,
     summary='Get item by ID',
-    description='Get item information by ID. Requires item.create permission.',
+    description='Get item information by ID. Requires item.view permission.',
 )
 async def get_item(
-    item_id: int,
+    item_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('item.create'))],
+    current_user: Annotated[User, Depends(require_permission('item.view'))],
 ) -> Item:
     """
     Get item by ID.
@@ -140,7 +160,7 @@ async def get_item(
     description='Update item information. Requires item.edit permission.',
 )
 async def update_item(
-    item_id: int,
+    item_id: Annotated[int, Field(gt=0)],
     data: ItemUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('item.edit'))],
@@ -175,7 +195,7 @@ async def update_item(
     description='Deactivate (soft delete) an item. Requires item.delete permission.',
 )
 async def deactivate_item(
-    item_id: int,
+    item_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('item.delete'))],
 ) -> Item:
@@ -201,7 +221,7 @@ async def deactivate_item(
     description='Reactivate a deactivated item. Requires item.edit permission.',
 )
 async def reactivate_item(
-    item_id: int,
+    item_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('item.edit'))],
 ) -> Item:
@@ -257,14 +277,14 @@ async def create_package(
 
 @packages_router.get(
     '',
-    response_model=list[PackagePublic],
+    response_model=PaginatedResponse[PackagePublic],
     status_code=status.HTTP_200_OK,
     summary='List packages',
-    description='Get paginated list of packages with optional filters. Requires package.create permission.',
+    description='Get paginated list of packages with optional filters. Requires package.view permission.',
 )
 async def list_packages(
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('package.create'))],
+    current_user: Annotated[User, Depends(require_permission('package.view'))],
     active_only: Annotated[
         bool, Query(description='Filter for active packages only')
     ] = False,
@@ -274,23 +294,43 @@ async def list_packages(
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=100, description='Maximum number of results')
-    ] = 100,
+    ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list[Package]:
+) -> PaginatedResponse[PackagePublic]:
     """
     List packages with pagination and optional filters.
 
     **Query parameters:**
     - active_only: If true, return only active packages (default: false)
     - session_type: Filter by session type (Studio/External/Both)
-    - limit: Maximum number of packages to return (1-100, default: 100)
+    - limit: Maximum number of packages to return (1-100, default: 50)
     - offset: Number of packages to skip for pagination (default: 0)
+
+    **Response:**
+    - items: List of packages for the current page
+    - total: Total number of packages matching filters
+    - limit: Maximum items per page
+    - offset: Number of items skipped
+    - has_more: Whether there are more packages beyond this page
+    - current_page: Current page number (computed)
+    - total_pages: Total number of pages (computed)
 
     **Permissions required:** package.view
     """
     service = PackageService(db)
-    return await service.list_packages(
+    packages = await service.list_packages(
         active_only=active_only, session_type=session_type, limit=limit, offset=offset
+    )
+    total = await service.count_packages(
+        active_only=active_only, session_type=session_type
+    )
+
+    return PaginatedResponse(
+        items=packages,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(packages)) < total,
     )
 
 
@@ -299,12 +339,12 @@ async def list_packages(
     response_model=PackageDetail,
     status_code=status.HTTP_200_OK,
     summary='Get package by ID with items',
-    description='Get package information by ID with included items. Requires package.create permission.',
+    description='Get package information by ID with included items. Requires package.view permission.',
 )
 async def get_package(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('package.create'))],
+    current_user: Annotated[User, Depends(require_permission('package.view'))],
 ) -> PackageDetail:
     """
     Get package by ID with all included items.
@@ -344,7 +384,7 @@ async def get_package(
     description='Update package information. Requires package.edit permission.',
 )
 async def update_package(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     data: PackageUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.edit'))],
@@ -378,7 +418,7 @@ async def update_package(
     description='Deactivate (soft delete) a package. Requires package.delete permission.',
 )
 async def deactivate_package(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.delete'))],
 ) -> Package:
@@ -404,7 +444,7 @@ async def deactivate_package(
     description='Reactivate a deactivated package. Requires package.edit permission.',
 )
 async def reactivate_package(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.edit'))],
 ) -> Package:
@@ -433,7 +473,7 @@ async def reactivate_package(
     description='Add an item to a package. Requires package.edit permission.',
 )
 async def add_item_to_package(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     data: PackageItemCreate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.edit'))],
@@ -473,8 +513,8 @@ async def add_item_to_package(
     description='Remove an item from a package. Requires package.edit permission.',
 )
 async def remove_item_from_package(
-    package_id: int,
-    item_id: int,
+    package_id: Annotated[int, Field(gt=0)],
+    item_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('package.edit'))],
 ) -> None:
@@ -496,12 +536,12 @@ async def remove_item_from_package(
     response_model=list[PackageItemDetail],
     status_code=status.HTTP_200_OK,
     summary='Get package items',
-    description='Get all items in a package with details. Requires package.create permission.',
+    description='Get all items in a package with details. Requires package.view permission.',
 )
 async def get_package_items(
-    package_id: int,
+    package_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('package.create'))],
+    current_user: Annotated[User, Depends(require_permission('package.view'))],
 ) -> list[PackageItemDetail]:
     """
     Get all items included in a package.
@@ -551,34 +591,52 @@ async def create_room(
 
 @rooms_router.get(
     '',
-    response_model=list[RoomPublic],
+    response_model=PaginatedResponse[RoomPublic],
     status_code=status.HTTP_200_OK,
     summary='List rooms',
-    description='Get paginated list of rooms with optional filters. Requires room.create permission.',
+    description='Get paginated list of rooms with optional filters. Requires room.view permission.',
 )
 async def list_rooms(
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('room.create'))],
+    current_user: Annotated[User, Depends(require_permission('room.view'))],
     active_only: Annotated[
         bool, Query(description='Filter for active rooms only')
     ] = False,
     limit: Annotated[
         int, Query(ge=1, le=100, description='Maximum number of results')
-    ] = 100,
+    ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list[Room]:
+) -> PaginatedResponse[RoomPublic]:
     """
     List rooms with pagination and optional filters.
 
     **Query parameters:**
     - active_only: If true, return only active rooms (default: false)
-    - limit: Maximum number of rooms to return (1-100, default: 100)
+    - limit: Maximum number of rooms to return (1-100, default: 50)
     - offset: Number of rooms to skip for pagination (default: 0)
+
+    **Response:**
+    - items: List of rooms for the current page
+    - total: Total number of rooms matching filters
+    - limit: Maximum items per page
+    - offset: Number of items skipped
+    - has_more: Whether there are more rooms beyond this page
+    - current_page: Current page number (computed)
+    - total_pages: Total number of pages (computed)
 
     **Permissions required:** room.view
     """
     service = RoomService(db)
-    return await service.list_rooms(active_only=active_only, limit=limit, offset=offset)
+    rooms = await service.list_rooms(active_only=active_only, limit=limit, offset=offset)
+    total = await service.count_rooms(active_only=active_only)
+
+    return PaginatedResponse(
+        items=rooms,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(rooms)) < total,
+    )
 
 
 @rooms_router.get(
@@ -586,12 +644,12 @@ async def list_rooms(
     response_model=RoomPublic,
     status_code=status.HTTP_200_OK,
     summary='Get room by ID',
-    description='Get room information by ID. Requires room.create permission.',
+    description='Get room information by ID. Requires room.view permission.',
 )
 async def get_room(
-    room_id: int,
+    room_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('room.create'))],
+    current_user: Annotated[User, Depends(require_permission('room.view'))],
 ) -> Room:
     """
     Get room by ID.
@@ -613,7 +671,7 @@ async def get_room(
     description='Update room information. Requires room.edit permission.',
 )
 async def update_room(
-    room_id: int,
+    room_id: Annotated[int, Field(gt=0)],
     data: RoomUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('room.edit'))],
@@ -645,7 +703,7 @@ async def update_room(
     description='Deactivate (soft delete) a room. Requires room.delete permission.',
 )
 async def deactivate_room(
-    room_id: int,
+    room_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('room.delete'))],
 ) -> Room:
@@ -671,7 +729,7 @@ async def deactivate_room(
     description='Reactivate a deactivated room. Requires room.edit permission.',
 )
 async def reactivate_room(
-    room_id: int,
+    room_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('room.edit'))],
 ) -> Room:
@@ -697,7 +755,7 @@ async def reactivate_room(
     description='Set room status to MAINTENANCE. Requires room.edit permission.',
 )
 async def set_room_maintenance(
-    room_id: int,
+    room_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('room.edit'))],
 ) -> Room:

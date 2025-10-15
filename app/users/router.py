@@ -12,12 +12,19 @@ This module exposes REST endpoints for:
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Query, status
+from pydantic import Field
 
 from app.core.dependencies import CurrentActiveUser, SessionDep
 from app.core.permissions import require_permission
-from app.core.security import create_access_token, verify_refresh_token
+from app.core.security import (
+    create_access_token,
+    oauth2_scheme,
+    verify_refresh_token,
+)
+from app.core.schemas import PaginatedResponse
 from app.users.models import Role, User
 from app.users.schemas import (
+    LogoutRequest,
     PermissionCreate,
     PermissionPublic,
     RoleCreate,
@@ -93,10 +100,31 @@ async def refresh_token(
     **Returns:**
     - New access_token and refresh_token pair
     - Updated user information
+
+    **Security:**
+    - Validates that the refresh token is not in the blocklist (not revoked)
+    - Checks that the user is still active
     """
+    from app.core.enums import Status
+    from app.core.exceptions import (
+        InactiveUserException,
+        InvalidTokenException,
+        UserNotFoundException,
+    )
+    from app.core.redis import token_in_blocklist
+    from app.core.security import create_refresh_token
+
     # Verify the refresh token
     payload = verify_refresh_token(refresh_token)
     email = payload.get('sub')
+    jti = payload.get('jti')
+
+    if not jti:
+        raise InvalidTokenException('Refresh token missing JTI claim')
+
+    # Check if refresh token is in blocklist (revoked)
+    if await token_in_blocklist(jti):
+        raise InvalidTokenException('Refresh token has been revoked')
 
     # Get user and generate new tokens
     service = UserService(db)
@@ -104,21 +132,13 @@ async def refresh_token(
     user = await user_repo.find_by_email(email)  # type: ignore
 
     if not user:
-        from app.core.exceptions import UserNotFoundException
-
         raise UserNotFoundException(email)  # type: ignore
 
     # Check if user is active
-    from app.core.enums import Status
-
     if user.status != Status.ACTIVE:
-        from app.core.exceptions import InactiveUserException
-
         raise InactiveUserException(f'User {user.email} is inactive')
 
     # Generate new token pair
-    from app.core.security import create_refresh_token
-
     new_access_token = create_access_token(data={'sub': user.email})
     new_refresh_token = create_refresh_token(data={'sub': user.email})
 
@@ -134,33 +154,78 @@ async def refresh_token(
     '/logout',
     status_code=status.HTTP_204_NO_CONTENT,
     summary='User logout',
-    description='Logout current user. In production, this should revoke tokens via Redis blacklist.',
+    description='Logout current user by revoking both access and refresh tokens.',
 )
 async def logout(
+    logout_data: LogoutRequest,
     current_user: CurrentActiveUser,
+    token: Annotated[str, Depends(oauth2_scheme)],
 ) -> None:
     """
-    Logout current user.
+    Logout current user by invalidating both access and refresh tokens.
 
-    TODO: Implement token revocation with Redis blacklist.
-    Currently this is a placeholder that returns success.
-    Client should discard tokens on logout.
+    This endpoint adds both the access token (from Authorization header) and
+    the refresh token (from request body) to Redis blocklist. Once added,
+    these tokens cannot be used for authentication or token refresh.
 
-    In production:
-    1. Extract jti from current token
-    2. Add jti to Redis blacklist with TTL = remaining token lifetime
-    3. Middleware should check blacklist on each request
+    **How it works:**
+    1. Extracts JTI from current access token (from Authorization header)
+    2. Extracts JTI from provided refresh token (from request body)
+    3. Calculates remaining TTL for both tokens
+    4. Adds both JTIs to Redis blocklist with appropriate TTL
+    5. Redis automatically removes expired tokens from blocklist
+
+    **Required:**
+    - refresh_token: The refresh token to revoke (from request body)
+    - Authorization header: Bearer token (access token) - automatically extracted
+
+    **Security:**
+    - User must be authenticated (valid access token required)
+    - Both tokens are immediately invalidated
+    - Subsequent requests with these tokens will fail with 401 Unauthorized
+
+    **Example request:**
+    ```json
+    {
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+    ```
     """
-    # TODO: Implement Redis token blacklist
-    """     jti = token_details['jti']
+    from datetime import datetime, timezone
 
-    await add_jti_to_blocklist(jti)
-    return JSONResponse(
-        content={'message': 'You have logged out'}, status_code=status.HTTP_200_OK 
+    from app.core.exceptions import InvalidTokenException
+    from app.core.redis import revoke_token_pair
+    from app.core.security import decode_access_token
+
+    # Extract JTI from access token (current request token)
+    access_payload = decode_access_token(token)
+    access_jti = access_payload.get('jti')
+    access_exp = access_payload.get('exp')
+
+    if not access_jti or not access_exp:
+        raise InvalidTokenException('Invalid access token structure')
+
+    # Extract JTI from refresh token
+    refresh_payload = verify_refresh_token(logout_data.refresh_token)
+    refresh_jti = refresh_payload.get('jti')
+    refresh_exp = refresh_payload.get('exp')
+
+    if not refresh_jti or not refresh_exp:
+        raise InvalidTokenException('Invalid refresh token structure')
+
+    # Calculate remaining TTL for both tokens
+    now = datetime.now(timezone.utc).timestamp()
+    access_ttl = max(int(access_exp - now), 0)
+    refresh_ttl = max(int(refresh_exp - now), 0)
+
+    # Add both tokens to blocklist
+    await revoke_token_pair(
+        access_jti=access_jti,
+        refresh_jti=refresh_jti,
+        access_ttl=access_ttl,
+        refresh_ttl=refresh_ttl,
     )
-        """
-    # blacklist_service = TokenBlacklist()
-    # await blacklist_service.revoke_token(jti, ttl_seconds)
+
     return None
 
 
@@ -171,7 +236,7 @@ users_router = APIRouter(prefix='/users', tags=['users'])
 
 @users_router.get(
     '',
-    response_model=list[UserPublic],
+    response_model=PaginatedResponse[UserPublic],
     status_code=status.HTTP_200_OK,
     summary='List users',
     description='Get paginated list of users. Requires user.list permission.',
@@ -186,9 +251,9 @@ async def list_users(
         int, Query(ge=1, le=100, description='Maximum number of results')
     ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list[User]:
+) -> PaginatedResponse[UserPublic]:
     """
-    List users with pagination.
+    List users with pagination and metadata.
 
     **Query parameters:**
     - active_only: If true, return only active users (default: false)
@@ -198,7 +263,17 @@ async def list_users(
     **Permissions required:** user.list
     """
     service = UserService(db)
-    return await service.list_users(active_only=active_only, limit=limit, offset=offset)
+
+    items = await service.list_users(active_only=active_only, limit=limit, offset=offset)
+    total = await service.count_users(active_only=active_only)
+
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(items)) < total,
+    )
 
 
 @users_router.post(
@@ -298,15 +373,67 @@ async def get_current_user_info(
 
 
 @users_router.get(
+    '/me/permissions',
+    response_model=list[str],
+    status_code=status.HTTP_200_OK,
+    summary='Get current user permissions',
+    description='Get all permission codes for the currently authenticated user.',
+)
+async def get_current_user_permissions(
+    current_user: CurrentActiveUser,
+    db: SessionDep,
+) -> list[str]:
+    """
+    Get all permission codes for the currently authenticated user.
+
+    Returns a list of permission codes that the user has through their assigned roles.
+    This endpoint is essential for Angular frontend to implement:
+    - Route guards based on permissions
+    - Conditional UI element visibility
+    - Role-based feature access
+
+    **Example response:**
+    ```json
+    [
+        "user.list",
+        "user.view",
+        "session.create",
+        "session.view",
+        "session.edit",
+        "client.list",
+        "client.view"
+    ]
+    ```
+
+    **Authentication required:** Yes (any authenticated user)
+
+    **Frontend usage example (Angular):**
+    ```typescript
+    // In AuthService
+    async loadUserPermissions(): Promise<string[]> {
+      return this.http.get<string[]>('/users/me/permissions').toPromise();
+    }
+
+    // In Route Guard
+    canActivate(route: ActivatedRouteSnapshot): boolean {
+      const requiredPermission = route.data['permission'];
+      return this.authService.hasPermission(requiredPermission);
+    }
+    ```
+    """
+    service = UserService(db)
+    return await service.get_user_permissions(current_user.id)
+
+
+@users_router.get(
     '/{user_id}',
     response_model=UserWithRoles,
     status_code=status.HTTP_200_OK,
     summary='Get user by ID',
     description='Get user information by ID with roles. Requires user.read permission.',
 )
-# todo: VERIFY USER READ PERMISSION LATER
 async def get_user(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('user.list'))],
 ) -> User:
@@ -330,7 +457,7 @@ async def get_user(
     description='Update user information. Requires user.edit permission.',
 )
 async def update_user(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     data: UserUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('user.edit'))],
@@ -363,7 +490,7 @@ async def update_user(
     description='Deactivate (soft delete) a user. Requires user.delete permission.',
 )
 async def deactivate_user(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('user.delete'))],
 ) -> User:
@@ -390,7 +517,7 @@ async def deactivate_user(
     description='Reactivate a deactivated user. Requires user.edit permission.',
 )
 async def reactivate_user(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('user.edit'))],
 ) -> User:
@@ -416,7 +543,7 @@ async def reactivate_user(
     description='Change user password. Users can change their own password, or admins can change any password.',
 )
 async def change_password(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     data: UserPasswordUpdate,
     db: SessionDep,
     current_user: CurrentActiveUser,
@@ -438,7 +565,6 @@ async def change_password(
     - Own password: Any authenticated user can change their own password
     - Other users: Requires user.edit permission
     """
-    # TODO: VERIFY PASSWORD VALIDATION => ERROR 500 INTERNAL SERVER PROBLEM
     service = UserService(db)
 
     # Check if user is changing their own password or has permission
@@ -470,7 +596,7 @@ user_roles_router = APIRouter(prefix='/users', tags=['user-roles'])
     description='Get all roles assigned to a user.',
 )
 async def list_user_roles(
-    user_id: int,
+    user_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: CurrentActiveUser,
 ) -> list:
@@ -509,8 +635,8 @@ async def list_user_roles(
     description='Assign a role to a user. Requires role.assign permission.',
 )
 async def assign_role(
-    user_id: int,
-    role_id: int,
+    user_id: Annotated[int, Field(gt=0)],
+    role_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('role.assign'))],
 ) -> User:
@@ -544,8 +670,8 @@ async def assign_role(
     description='Remove a role from a user. Requires role.assign permission.',
 )
 async def remove_role(
-    user_id: int,
-    role_id: int,
+    user_id: Annotated[int, Field(gt=0)],
+    role_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('role.assign'))],
 ) -> User:
@@ -573,7 +699,7 @@ roles_router = APIRouter(prefix='/roles', tags=['roles'])
 
 @roles_router.get(
     '',
-    response_model=list[RolePublic],
+    response_model=PaginatedResponse[RolePublic],
     status_code=status.HTTP_200_OK,
     summary='List roles',
     description='Get paginated list of roles. Requires role.list permission.',
@@ -588,9 +714,9 @@ async def list_roles(
         int, Query(ge=1, le=100, description='Maximum number of results')
     ] = 50,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list:
+) -> PaginatedResponse[RolePublic]:
     """
-    List roles with pagination.
+    List roles with pagination and metadata.
 
     **Query parameters:**
     - active_only: If true, return only active roles (default: false)
@@ -600,7 +726,17 @@ async def list_roles(
     **Permissions required:** role.list
     """
     service = RoleService(db)
-    return await service.list_roles(active_only=active_only, limit=limit, offset=offset)
+
+    items = await service.list_roles(active_only=active_only, limit=limit, offset=offset)
+    total = await service.count_roles(active_only=active_only)
+
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(items)) < total,
+    )
 
 
 @roles_router.post(
@@ -639,7 +775,7 @@ async def create_role(
     description='Get role information by ID with permissions. Requires role.read permission.',
 )
 async def get_role(
-    role_id: int,
+    role_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('role.read'))],
 ) -> RoleWithPermissions:
@@ -664,7 +800,7 @@ async def get_role(
     description='Update role information. Requires role.edit permission.',
 )
 async def update_role(
-    role_id: int,
+    role_id: Annotated[int, Field(gt=0)],
     data: RoleUpdate,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('role.edit'))],
@@ -694,7 +830,7 @@ permissions_router = APIRouter(prefix='/permissions', tags=['permissions'])
 
 @permissions_router.get(
     '',
-    response_model=list[PermissionPublic],
+    response_model=PaginatedResponse[PermissionPublic],
     status_code=status.HTTP_200_OK,
     summary='List permissions',
     description='Get paginated list of permissions. Requires permission.list permission.',
@@ -710,9 +846,9 @@ async def list_permissions(
         int, Query(ge=1, le=100, description='Maximum number of results')
     ] = 100,
     offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
-) -> list:
+) -> PaginatedResponse[PermissionPublic]:
     """
-    List permissions with optional filtering.
+    List permissions with optional filtering and pagination metadata.
 
     **Query parameters:**
     - module: Filter permissions by module (e.g., 'user', 'session', 'client')
@@ -723,8 +859,18 @@ async def list_permissions(
     **Permissions required:** permission.list
     """
     service = PermissionService(db)
-    return await service.list_permissions(
+
+    items = await service.list_permissions(
         module=module, active_only=active_only, limit=limit, offset=offset
+    )
+    total = await service.count_permissions(module=module, active_only=active_only)
+
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(items)) < total,
     )
 
 

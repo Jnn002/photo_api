@@ -1,0 +1,58 @@
+meta {
+  name: AssignEditor
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{back}}/sessions/:session_id/assign-editor
+  body: json
+  auth: inherit
+}
+
+params:path {
+  session_id: {{session_id}}
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "editor_id": 11
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  **Assign an editor to a session for editing phase**
+  
+  Permission required: `session.assign-resources`
+  
+  **Path Parameters:**
+  - session_id: ID of the session to assign editor to
+  
+  **Body Parameters:**
+  - editor_id: User ID of the editor to assign
+  
+  **Typical Workflow:**
+  1. Session is attended by photographer (status: ATTENDED)
+  2. Coordinator assigns editor using this endpoint
+  3. Coordinator transitions session to IN_EDITING status
+  4. Editor can see session in GET /sessions/my-editing
+  5. Editor completes work and calls POST /sessions/{id}/mark-ready
+  
+  **Business Logic:**
+  - Sets the editing_assigned_to field on the session
+  - Editor must have appropriate role (editor role)
+  - Usually done when session is in ATTENDED status
+  - After assignment, session should be transitioned to IN_EDITING
+  
+  **Use Case:**
+  Coordinator wants to assign post-processing work to an editor after
+  the photography session has been completed.
+}

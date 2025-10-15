@@ -1,0 +1,49 @@
+meta {
+  name: ListMyAssignments
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{back}}/sessions/my-assignments?status=Assigned&limit=50&offset=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  status: Assigned
+  limit: 50
+  offset: 0
+  ~start_date: 2025-01-01
+  ~end_date: 2025-12-31
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  **Endpoint for Photographers to view their assigned sessions**
+  
+  Permission required: `session.view.own`
+  
+  **Query Parameters:**
+  - status: Filter by session status (optional)
+    - Examples: ASSIGNED, CONFIRMED, ATTENDED
+  - start_date: Filter from this date (optional, format: YYYY-MM-DD)
+  - end_date: Filter until this date (optional, format: YYYY-MM-DD)
+  - limit: Maximum results (1-100, default: 100)
+  - offset: Skip results for pagination (default: 0)
+  
+  **Use cases:**
+  - Photographer logs in and wants to see upcoming sessions
+  - Filter by ASSIGNED status to see only sessions ready to attend
+  - Filter by date range to see this week's or this month's sessions
+  
+  **Response:**
+  Returns list of sessions where the current photographer is assigned.
+}

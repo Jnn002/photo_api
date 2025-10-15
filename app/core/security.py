@@ -96,7 +96,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     Args:
         data: Dictionary containing claims to encode in the token
         expires_delta: Optional expiration time delta. If not provided,
-                      uses ACCESS_TOKEN_EXPIRE_MINUTES from settings
+                    uses ACCESS_TOKEN_EXPIRE_MINUTES from settings
 
     Returns:
         Encoded JWT token string
@@ -296,9 +296,19 @@ async def get_current_user(
     # Decode token and extract email
     payload = decode_access_token(token)
     email: str | None = payload.get('sub')
+    jti: str | None = payload.get('jti')
 
     if email is None:
         raise InvalidTokenException('Token missing subject claim')
+
+    if jti is None:
+        raise InvalidTokenException('Token missing JTI claim')
+
+    # Check if token is in blocklist (revoked)
+    from app.core.redis import token_in_blocklist
+
+    if await token_in_blocklist(jti):
+        raise InvalidTokenException('Token has been revoked')
 
     # Fetch user from database
     user_repo = UserRepository(db)
@@ -309,7 +319,7 @@ async def get_current_user(
 
     # Cache permissions on user object for this request to avoid N+1 queries
     # This is safe because User object is request-scoped
-    permissions = await user_repo.get_user_permissions(user.id)
+    permissions = await user_repo.get_user_permissions(user.id)  # type: ignore
     user._cached_permissions = {perm.code for perm in permissions}  # type: ignore
 
     return user

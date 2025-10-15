@@ -209,14 +209,27 @@ class SessionNotEditableException(BusinessValidationException):
 class InvalidStatusTransitionException(BusinessValidationException):
     """Invalid session status transition."""
 
-    def __init__(self, from_status: str, to_status: str, allowed_statuses: list[str]):
+    def __init__(
+        self,
+        from_status: str,
+        to_status: str,
+        allowed_statuses: list[str],
+        reason: str | None = None,
+    ):
         self.from_status = from_status
         self.to_status = to_status
         self.allowed_statuses = allowed_statuses
-        super().__init__(
-            f'Cannot transition from {from_status} to {to_status}. '
-            f'Allowed: {", ".join(allowed_statuses)}'
-        )
+        self.reason = reason
+
+        # Build message
+        message = f'Cannot transition from {from_status} to {to_status}.'
+
+        if reason:
+            message += f' Reason: {reason}'
+        elif allowed_statuses:
+            message += f' Allowed: {", ".join(allowed_statuses)}'
+
+        super().__init__(message)
 
 
 class InsufficientBalanceException(BusinessValidationException):
@@ -288,4 +301,15 @@ class PackageItemsEmptyException(BusinessValidationException):
         self.package_id = package_id
         super().__init__(
             f'Package {package_id} has no items and cannot be added to session'
+        )
+
+
+class PhotographerNotAssignedException(BusinessValidationException):
+    """Photographer is not assigned to the specified session."""
+
+    def __init__(self, photographer_id: int, session_id: int):
+        self.photographer_id = photographer_id
+        self.session_id = session_id
+        super().__init__(
+            f'Photographer {photographer_id} is not assigned to session {session_id}'
         )

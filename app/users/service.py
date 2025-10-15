@@ -30,7 +30,6 @@ from app.users.models import Permission, Role, User
 from app.users.repository import PermissionRepository, RoleRepository, UserRepository
 from app.users.schemas import (
     PermissionCreate,
-    PermissionUpdate,
     RoleCreate,
     RoleUpdate,
     TokenResponse,
@@ -232,9 +231,7 @@ class UserService:
 
         return user
 
-    async def update_password(
-        self, user_id: int, data: UserPasswordUpdate
-    ) -> User:
+    async def update_password(self, user_id: int, data: UserPasswordUpdate) -> User:
         """
         Update user password.
 
@@ -277,8 +274,6 @@ class UserService:
 
         logger.info(f'Password updated for user: {user.email} (ID: {user.id})')
 
-        # TODO: Revoke all existing tokens for this user (implement with Redis blacklist)
-
         return user
 
     async def deactivate_user(self, user_id: int, deactivated_by: int) -> User:
@@ -315,8 +310,6 @@ class UserService:
         logger.info(
             f'User deactivated: {user.email} (ID: {user.id}) by user {deactivated_by}'
         )
-
-        # TODO: Revoke all tokens for this user (implement with Redis blacklist)
 
         return user
 
@@ -391,9 +384,7 @@ class UserService:
         # Check if already assigned
         user_with_roles = await self.user_repo.get_with_roles(user_id)
         if user_with_roles and any(r.id == role_id for r in user_with_roles.roles):
-            raise BusinessValidationException(
-                f'User already has role {role.name}'
-            )
+            raise BusinessValidationException(f'User already has role {role.name}')
 
         # Assign role
         await self.user_repo.assign_role(user_id, role_id, assigned_by)
@@ -480,6 +471,43 @@ class UserService:
         return await self.user_repo.list_by_role(
             role_name=role_name, limit=limit, offset=offset
         )
+
+    async def get_user_permissions(self, user_id: int) -> list[str]:
+        """
+        Get all permission codes for a user (through their roles).
+
+        This method retrieves all permissions granted to a user through their assigned roles.
+        Used for frontend route guards and UI permission checks.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            List of permission codes (e.g., ['user.create', 'session.view', ...])
+
+        Raises:
+            UserNotFoundException: If user not found
+        """
+        # Validate user exists
+        user = await self.get_user_by_id(user_id)
+
+        # Get all permissions through roles
+        permissions = await self.user_repo.get_user_permissions(user_id)
+
+        # Return only permission codes
+        return [permission.code for permission in permissions]
+
+    async def count_users(self, active_only: bool = False) -> int:
+        """
+        Count users matching filters.
+
+        Args:
+            active_only: If True, only count active users
+
+        Returns:
+            Total count of users matching filters
+        """
+        return await self.user_repo.count_users(active_only=active_only)
 
 
 # ==================== Role Service ====================
@@ -628,6 +656,18 @@ class RoleService:
             return await self.role_repo.list_active(limit=limit, offset=offset)
         return await self.role_repo.list_all(limit=limit, offset=offset)
 
+    async def count_roles(self, active_only: bool = False) -> int:
+        """
+        Count roles matching filters.
+
+        Args:
+            active_only: If True, only count active roles
+
+        Returns:
+            Total count of roles matching filters
+        """
+        return await self.role_repo.count_roles(active_only=active_only)
+
 
 # ==================== Permission Service ====================
 
@@ -713,3 +753,20 @@ class PermissionService:
             return await self.permission_repo.list_active(limit=limit, offset=offset)
 
         return await self.permission_repo.list_all(limit=limit, offset=offset)
+
+    async def count_permissions(
+        self, module: str | None = None, active_only: bool = False
+    ) -> int:
+        """
+        Count permissions matching filters.
+
+        Args:
+            module: Filter by module (optional)
+            active_only: If True, only count active permissions
+
+        Returns:
+            Total count of permissions matching filters
+        """
+        return await self.permission_repo.count_permissions(
+            module=module, active_only=active_only
+        )

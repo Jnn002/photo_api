@@ -176,6 +176,54 @@ class SessionRepository:
         await self.db.refresh(session)
         return session
 
+    async def count_sessions(
+        self,
+        client_id: int | None = None,
+        status: SessionStatus | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        photographer_id: int | None = None,
+        editor_id: int | None = None,
+    ) -> int:
+        """
+        Count sessions matching filters.
+
+        Args:
+            client_id: Filter by client
+            status: Filter by session status
+            start_date: Filter from this date (inclusive)
+            end_date: Filter until this date (inclusive)
+            photographer_id: Filter by assigned photographer
+            editor_id: Filter by assigned editor
+
+        Returns:
+            Total count of sessions matching filters
+        """
+        statement = select(func.count(SessionModel.id))
+
+        if client_id:
+            statement = statement.where(SessionModel.client_id == client_id)
+
+        if status:
+            statement = statement.where(SessionModel.status == status)
+
+        if start_date:
+            statement = statement.where(SessionModel.session_date >= start_date)
+
+        if end_date:
+            statement = statement.where(SessionModel.session_date <= end_date)
+
+        if photographer_id:
+            statement = statement.join(SessionPhotographer).where(
+                SessionPhotographer.photographer_id == photographer_id
+            )
+
+        if editor_id:
+            statement = statement.where(SessionModel.editing_assigned_to == editor_id)
+
+        result = await self.db.exec(statement)
+        return result.one()
+
 
 # ==================== Session Detail Repository ====================
 
@@ -301,6 +349,17 @@ class SessionPhotographerRepository:
     async def get_by_id(self, assignment_id: int) -> SessionPhotographer | None:
         """Get photographer assignment by ID."""
         return await self.db.get(SessionPhotographer, assignment_id)
+
+    async def get_by_session_and_photographer(
+        self, session_id: int, photographer_id: int
+    ) -> SessionPhotographer | None:
+        """Get photographer assignment by session and photographer IDs."""
+        statement = select(SessionPhotographer).where(
+            SessionPhotographer.session_id == session_id,
+            SessionPhotographer.photographer_id == photographer_id,
+        )
+        result = await self.db.exec(statement)
+        return result.first()
 
     async def list_by_session(self, session_id: int) -> list[SessionPhotographer]:
         """List all photographer assignments for a session."""

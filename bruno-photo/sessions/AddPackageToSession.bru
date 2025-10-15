@@ -5,9 +5,14 @@ meta {
 }
 
 post {
-  url: {{back}}/sessions/1/details/packages/1
+  url: {{back}}/sessions/:session_id/details/packages/:package_id
   body: none
   auth: inherit
+}
+
+params:path {
+  package_id: 1
+  session_id: {{session_id}}
 }
 
 headers {
@@ -18,13 +23,13 @@ tests {
   test("should return 201", function() {
     expect(res.status).to.equal(201);
   });
-
+  
   test("should return array of session details", function() {
     const data = res.body;
     expect(data).to.be.an('array');
     expect(data.length).to.be.greaterThan(0);
   });
-
+  
   test("each detail should have correct structure", function() {
     const data = res.body;
     data.forEach(detail => {

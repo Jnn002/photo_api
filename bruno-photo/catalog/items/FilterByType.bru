@@ -5,14 +5,14 @@ meta {
 }
 
 get {
-  url: {{back}}/items?item_type=Printed Photo&limit=100
+  url: {{back}}/items?item_type=Printed Photo&limit=50
   body: none
   auth: inherit
 }
 
 params:query {
   item_type: Printed Photo
-  limit: 100
+  limit: 50
 }
 
 headers {
@@ -24,11 +24,17 @@ tests {
     expect(res.status).to.equal(200);
   });
   
+  test("should return paginated response", function() {
+    const data = res.body;
+    expect(data).to.have.property('items');
+    expect(data).to.have.property('total');
+    expect(Array.isArray(data.items)).to.be.true;
+  });
+  
   test("should return filtered items", function() {
     const data = res.body;
-    expect(Array.isArray(data)).to.be.true;
-    if (data.length > 0) {
-      expect(data[0].item_type).to.equal('Photo');
+    if (data.items.length > 0) {
+      expect(data.items[0].item_type).to.equal('Printed Photo');
     }
   });
 }

@@ -459,11 +459,36 @@ def register_all_errors(app: FastAPI) -> None:
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ):
+        # Process errors to extract only JSON-serializable values
+        errors = []
+        for error in exc.errors():
+            # Create a clean error dict without non-serializable objects
+            clean_error = {
+                'type': error.get('type'),
+                'loc': error.get('loc'),
+                'msg': error.get('msg'),
+                'input': error.get('input'),
+            }
+
+            # Extract context if present, but convert non-serializable values
+            if 'ctx' in error:
+                ctx = error['ctx']
+                clean_ctx = {}
+                for key, value in ctx.items():
+                    # Convert exception objects to their string representation
+                    if isinstance(value, Exception):
+                        clean_ctx[key] = str(value)
+                    else:
+                        clean_ctx[key] = value
+                clean_error['ctx'] = clean_ctx
+
+            errors.append(clean_error)
+
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 'message': 'Request validation failed',
                 'error_code': 'validation_error',
-                'detail': {'errors': exc.errors()},
+                'detail': {'errors': errors},
             },
         )

@@ -380,3 +380,9 @@ class TokenResponse(BaseModel):
     token_type: str = 'bearer'
     expires_in: int  # seconds
     user: UserPublic
+
+
+class LogoutRequest(BaseModel):
+    """Schema for logout request."""
+
+    refresh_token: str = Field(..., min_length=1, description='Refresh token to revoke')

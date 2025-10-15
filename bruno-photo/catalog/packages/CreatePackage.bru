@@ -16,11 +16,11 @@ headers {
 
 body:json {
   {
-    "code": "PKG-BASIC",
-    "name": "Paquete Básico Estudio",
-    "description": "Sesión básica de 1 hora con 20 fotos digitales",
-    "session_type": "Studio",
-    "base_price": "500.00",
+    "code": "PKG-PRO",
+    "name": "Paquete Pro Exteriores",
+    "description": "Sesión PRO Video 360 y video normal ",
+    "session_type": "External",
+    "base_price": "600.00",
     "estimated_editing_days": 7
   }
 }
@@ -29,7 +29,7 @@ tests {
   test("should return 201", function() {
     expect(res.status).to.equal(201);
   });
-
+  
   test("should return package data", function() {
     const data = res.body;
     expect(data).to.have.property('id');

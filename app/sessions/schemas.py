@@ -421,6 +421,12 @@ class SessionEditorAssignment(BaseModel):
         return v
 
 
+class SessionMarkReady(BaseModel):
+    """Schema for marking session as ready for delivery (editor completed)."""
+
+    notes: str | None = None
+
+
 class SessionDelivery(BaseModel):
     """Schema for marking session as delivered."""
 

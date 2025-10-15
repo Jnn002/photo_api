@@ -11,7 +11,7 @@ get {
 }
 
 params:path {
-  item_id: 1
+  item_id: 3
 }
 
 headers {
@@ -22,7 +22,7 @@ tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("should return item data", function() {
     const data = res.body;
     expect(data).to.have.property('id');

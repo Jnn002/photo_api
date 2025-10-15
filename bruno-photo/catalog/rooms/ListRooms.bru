@@ -5,14 +5,14 @@ meta {
 }
 
 get {
-  url: {{back}}/rooms?active_only=true&limit=100&offset=0
+  url: {{back}}/rooms?active_only=true&limit=50&offset=0
   body: none
   auth: inherit
 }
 
 params:query {
   active_only: true
-  limit: 100
+  limit: 50
   offset: 0
 }
 
@@ -25,8 +25,25 @@ tests {
     expect(res.status).to.equal(200);
   });
 
+  test("should return paginated response structure", function() {
+    const data = res.body;
+    expect(data).to.have.property('items');
+    expect(data).to.have.property('total');
+    expect(data).to.have.property('limit');
+    expect(data).to.have.property('offset');
+    expect(data).to.have.property('has_more');
+  });
+
   test("should return array of rooms", function() {
     const data = res.body;
-    expect(Array.isArray(data)).to.be.true;
+    expect(Array.isArray(data.items)).to.be.true;
+  });
+
+  test("pagination metadata should be valid", function() {
+    const data = res.body;
+    expect(data.total).to.be.a('number');
+    expect(data.limit).to.equal(50);
+    expect(data.offset).to.equal(0);
+    expect(data.has_more).to.be.a('boolean');
   });
 }

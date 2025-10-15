@@ -1,0 +1,72 @@
+meta {
+  name: MarkMyAttendance
+  type: http
+  seq: 15
+}
+
+patch {
+  url: {{back}}/sessions/:session_id/my-attendance
+  body: json
+  auth: inherit
+}
+
+params:path {
+  session_id: {{session_id}}
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "attended": true,
+    "notes": "Sesión atendida con éxito - endpoint simplificado"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  **Mark MY attendance (Photographer - Simplified Endpoint)**
+  
+  Permission required: `session.mark-attended`
+  
+  **Path Parameters:**
+  - session_id: ID of the session (ONLY parameter needed!)
+  
+  **Body Parameters:**
+  - attended: Set to true to mark as attended
+  - notes: Optional notes about the session
+  
+  **Key Advantages of this endpoint:**
+  ✅ Frontend only needs the session_id (already available from /sessions/my-assignments)
+  ✅ No need to fetch or track assignment_id
+  ✅ Backend automatically finds photographer assignment using authenticated user
+  ✅ More intuitive: "Mark MY attendance to this session"
+  ✅ More secure: Photographer can only mark their OWN attendance
+  
+  **Important - Automatic Transition:**
+  When a photographer marks themselves as attended:
+  - Backend finds the photographer's assignment for this session
+  - The photographer assignment is marked as attended
+  - If the session status is ASSIGNED, it automatically transitions to ATTENDED
+  - The status change is recorded in history
+  
+  **Use case:**
+  1. Photographer views their assignments via GET /sessions/my-assignments
+  2. Photographer attends a session
+  3. Frontend calls PATCH /sessions/{session_id}/my-attendance
+  4. Session automatically moves from ASSIGNED → ATTENDED
+  5. Session is now ready for editing phase
+  
+  **Error Cases:**
+  - 404: Photographer is not assigned to this session
+  - 404: Session not found
+  
+  **Note:**
+  - This endpoint is specifically designed for photographers to mark their own attendance
+  - Coordinators should use the standard endpoint if they need to mark attendance by assignment_id
+}

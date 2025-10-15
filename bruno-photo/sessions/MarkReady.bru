@@ -1,0 +1,57 @@
+meta {
+  name: MarkReady
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{back}}/sessions/:session_id/mark-ready
+  body: json
+  auth: inherit
+}
+
+params:path {
+  session_id: {{session_id}}
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "notes": "Edicin completada. Fotos entregadas en alta resolucón."
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  **Mark session as ready for delivery (Editor completed editing)**
+  
+  Permission required: `session.mark-ready`
+  
+  **Path Parameters:**
+  - session_id: ID of the session to mark as ready
+  
+  **Body Parameters:**
+  - notes: Optional notes about the editing completion
+  
+  **Business Logic:**
+  - Session MUST be in IN_EDITING status
+  - Automatically transitions to READY_FOR_DELIVERY status
+  - Records editing_completed_at timestamp
+  - Records status change in history with reason
+  
+  **Use case:**
+  1. Editor finishes editing photos/videos
+  2. Calls this endpoint to mark session as ready
+  3. Coordinator gets notified and can deliver to client
+  
+  **Important:**
+  - This is an automatic transition, no manual status change needed
+  - Cannot be called if session is not in IN_EDITING status
+  - Only editors with session.mark-ready permission can use this
+}

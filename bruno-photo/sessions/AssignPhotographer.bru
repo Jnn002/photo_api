@@ -5,9 +5,13 @@ meta {
 }
 
 post {
-  url: {{back}}/sessions/1/photographers
+  url: {{back}}/sessions/:session_id/photographers
   body: json
   auth: inherit
+}
+
+params:path {
+  session_id: {{session_id}}
 }
 
 headers {
@@ -16,8 +20,8 @@ headers {
 
 body:json {
   {
-    "session_id": 1,
-    "photographer_id": 2,
+    "session_id": {{session_id}},
+    "photographer_id": 10,
     "role": "Lead"
   }
 }
@@ -26,7 +30,7 @@ tests {
   test("should return 201", function() {
     expect(res.status).to.equal(201);
   });
-
+  
   test("should return photographer assignment", function() {
     const data = res.body;
     expect(data).to.have.property('id');
