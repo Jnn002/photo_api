@@ -7,14 +7,12 @@ This module defines Pydantic v2 schemas for user operations:
 - Permission schemas: Granular permissions
 """
 
-import re
 from datetime import datetime
 
-from asyncpg import InvalidPasswordError
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from ..core.enums import Status
-from ..core.error_handlers import InvaiidPasswordFormatException
+from .value_objects import Password
 
 # ==================== Permission Schemas ====================
 
@@ -137,11 +135,16 @@ class RoleWithPermissions(RolePublic):
 
 
 class UserCreate(BaseModel):
-    """Schema for creating a new user."""
+    """
+    Schema for creating a new user.
+
+    The password field uses the Password value object which automatically
+    validates password strength. No manual validation is needed.
+    """
 
     full_name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr = Field(..., max_length=100)
-    password: str = Field(..., min_length=8, max_length=100)
+    password: Password  # Automatically validated by Password value object
     phone: str | None = Field(default=None, max_length=20)
 
     @field_validator('full_name')
@@ -151,69 +154,6 @@ class UserCreate(BaseModel):
         if not v or not v.strip():
             raise ValueError('Field cannot be empty or whitespace')
         return v.strip()
-
-    @field_validator('password')
-    @classmethod
-    def validate_password_strength(cls, v: str) -> str:
-        """
-        Validate password meets comprehensive security requirements.
-
-        Requirements:
-        - At least 8 characters long
-        - At least one digit
-        - At least one lowercase letter
-        - At least one uppercase letter
-        - At least one special character
-        - Not a common weak password
-        """
-        errors = []
-
-        if len(v) < 8:
-            raise InvaiidPasswordFormatException(
-                'Password must be at least 8 characters long'
-            )
-
-        if not any(char.isdigit() for char in v):
-            raise InvaiidPasswordFormatException(
-                'Password must contain at least one digit'
-            )
-
-        if not any(char.islower() for char in v):
-            raise InvaiidPasswordFormatException(
-                'Password must contain at least one lowercase letter'
-            )
-
-        if not any(char.isupper() for char in v):
-            raise InvaiidPasswordFormatException(
-                'Password must contain at least one uppercase letter'
-            )
-
-        # Check for special characters
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;\'`~]', v):
-            raise InvaiidPasswordFormatException(
-                'Password must contain at least one special character'
-            )
-
-        # Check for common weak passwords
-        common_passwords = [
-            'password',
-            'password123',
-            '12345678',
-            'qwerty',
-            'abc123',
-            'password1',
-            '123456789',
-            'admin123',
-        ]
-        if v.lower() in common_passwords:
-            raise InvaiidPasswordFormatException(
-                'Password is too common and easily guessable'
-            )
-
-        if errors:
-            raise ValueError('; '.join(errors))
-
-        return v
 
 
 class UserUpdate(BaseModel):
@@ -234,71 +174,15 @@ class UserUpdate(BaseModel):
 
 
 class UserPasswordUpdate(BaseModel):
-    """Schema for updating user password."""
+    """
+    Schema for updating user password.
+
+    The new_password field uses the Password value object which automatically
+    validates password strength. No manual validation is needed.
+    """
 
     current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8, max_length=100)
-
-    @field_validator('new_password')
-    @classmethod
-    def validate_password_strength(cls, v: str) -> str:
-        """
-        Validate password meets comprehensive security requirements.
-
-        Requirements:
-        - At least 8 characters long
-        - At least one digit
-        - At least one lowercase letter
-        - At least one uppercase letter
-        - At least one special character
-        - Not a common weak password
-        """
-        errors = []
-
-        if len(v) < 8:
-            raise InvaiidPasswordFormatException(
-                'Password must be at least 8 characters long'
-            )
-
-        if not any(char.isdigit() for char in v):
-            raise InvaiidPasswordFormatException(
-                'Password must contain at least one digit'
-            )
-
-        if not any(char.islower() for char in v):
-            raise InvaiidPasswordFormatException(
-                'Password must contain at least one lowercase letter'
-            )
-
-        if not any(char.isupper() for char in v):
-            raise InvaiidPasswordFormatException(
-                'Password must contain at least one uppercase letter'
-            )
-
-        # Check for special characters
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;\'`~]', v):
-            raise InvaiidPasswordFormatException(
-                'Password must contain at least one special character'
-            )
-
-        # Check for common weak passwords
-        common_passwords = [
-            'password',
-            'password123',
-            '12345678',
-            'qwerty',
-            'abc123',
-            'password1',
-            '123456789',
-            'admin123',
-        ]
-        if v.lower() in common_passwords:
-            raise InvalidPasswordError('Password is too common and easily guessable')
-
-        if errors:
-            raise ValueError('; '.join(errors))
-
-        return v
+    new_password: Password  # Automatically validated by Password value object
 
 
 class UserPublic(BaseModel):

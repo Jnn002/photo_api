@@ -460,13 +460,13 @@ pytest -k "test_session_creation"
 - ✅ Schemas (Pydantic DTOs)
 - ✅ Repositories (data access layer)
 - ✅ Authentication & RBAC
+- ✅ Routers (API endpoints)
+- ✅ Services (business logic)
 
 **implementation in Progress:**
-- ⏳ Services (business logic)
-- ⏳ Routers (API endpoints)
+- ⏳ Validate compatibility with soon Angular frontend integration
 
 **To Implement:**
 - ⏳ Background tasks (Celery)
 - ⏳ Email notifications
-- ⏳ Comprehensive tests
 - cuando crees los test http con bruno, utiliza {{back}} esta variables es igual a http://127.0.0.1:8000/api/v1

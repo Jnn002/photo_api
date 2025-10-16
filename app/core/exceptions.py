@@ -23,7 +23,7 @@ class StudioException(Exception):
 # ==================== Authentication & Authorization Exceptions ====================
 
 
-class InvaiidPasswordFormatException(StudioException):
+class InvalidPasswordFormatException(StudioException):
     """Password does not meet complexity requirements."""
 
     pass

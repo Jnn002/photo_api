@@ -1,0 +1,34 @@
+meta {
+  name: GetBusinessRules
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{back}}/config/business-rules
+  body: none
+  auth: none
+}
+
+docs {
+  # Get Business Rules Configuration
+
+  Retrieves business configuration values that the frontend needs for:
+  - Displaying consistent messages
+  - Calculating deadlines
+  - Validating business rules on the client side
+
+  **Public endpoint** - No authentication required.
+
+  This should be loaded on app initialization before user login.
+
+  ## Response
+  ```json
+  {
+    "payment_deadline_days": 5,
+    "changes_deadline_days": 7,
+    "default_editing_days": 15,
+    "default_deposit_percentage": 50
+  }
+  ```
+}
