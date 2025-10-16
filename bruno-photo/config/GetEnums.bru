@@ -1,0 +1,65 @@
+meta {
+  name: GetEnums
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{back}}/enums
+  body: none
+  auth: none
+}
+
+docs {
+  # Get All Enum Values
+
+  Retrieves all possible values for enum fields used throughout the API.
+
+  **Use cases:**
+  - Populate dropdown/select controls
+  - Generate TypeScript enums
+  - Validate values before submission
+  - Display localized labels
+
+  **Public endpoint** - No authentication required.
+
+  This should be loaded on app initialization before user login.
+
+  ## Response
+  ```json
+  {
+    "session_status": ["REQUEST", "NEGOTIATION", "PRE_SCHEDULED", "CONFIRMED", "ASSIGNED", "ATTENDED", "IN_EDITING", "READY_FOR_DELIVERY", "COMPLETED", "CANCELED"],
+    "session_type": ["STUDIO", "EXTERNAL"],
+    "client_type": ["INDIVIDUAL", "INSTITUTIONAL"],
+    "payment_type": ["CASH", "CARD", "TRANSFER", "CHECK"],
+    "delivery_method": ["PICKUP", "DELIVERY", "DIGITAL"],
+    "status": ["ACTIVE", "INACTIVE"],
+    "photographer_role": ["PRIMARY", "ASSISTANT"],
+    "line_type": ["ITEM", "PACKAGE"],
+    "reference_type": ["ITEM", "PACKAGE"],
+    "item_type": ["PRODUCT", "SERVICE"],
+    "unit_measure": ["UNIT", "HOUR", "DAY", "PACKAGE"]
+  }
+  ```
+
+  ## Frontend Integration (Angular)
+
+  ```typescript
+  // Generate TypeScript enum from API response
+  export enum SessionStatus {
+    REQUEST = 'REQUEST',
+    NEGOTIATION = 'NEGOTIATION',
+    PRE_SCHEDULED = 'PRE_SCHEDULED',
+    // ... auto-generated from API
+  }
+
+  // Populate dropdown
+  async ngOnInit() {
+    const enums = await this.configService.getEnums();
+    this.statusOptions = enums.session_status.map(status => ({
+      value: status,
+      label: this.translateService.instant(`session.status.${status}`)
+    }));
+  }
+  ```
+}

@@ -1,54 +1,155 @@
-# app/core/value_objects.py
+"""
+Value objects for user module.
+
+This module defines value objects for user-related domain logic,
+specifically password validation with comprehensive security requirements.
+"""
 
 import re
-from dataclasses import dataclass
 
-# Asumimos que esta es la ruta a tu excepción personalizada
-from ..core.exceptions import InvaiidPasswordFormatException
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import core_schema
+
+from ..core.exceptions import InvalidPasswordFormatException
 
 
-@dataclass(frozen=True)
-class PasswordStr:
-    v: str
+class Password(str):
     """
-    Valida que la contraseña cumpla con los criterios de seguridad definidos.
-    - Al menos 8 caracteres de longitud.
-    - Al menos una letra minúscula.
-    - Al menos una letra mayúscula.
-    - Al menos un dígito.
-    - Al menos un carácter especial.
-    
+    Password value object with comprehensive validation.
+
+    This is a Pydantic-compatible value object that validates password strength
+    according to security requirements. It inherits from str to work seamlessly
+    with Pydantic and FastAPI.
+
+    Requirements:
+    - At least 8 characters long
+    - At least one lowercase letter
+    - At least one uppercase letter
+    - At least one digit
+    - At least one special character
+    - Not a common weak password
+
+    Usage in Pydantic schemas:
+        from app.users.value_objects import Password
+
+        class UserCreate(BaseModel):
+            password: Password  # Automatically validated
+
+    The password will be validated when the Pydantic model is instantiated,
+    and validation errors will be properly serialized to JSON with clear messages.
     """
-    v: str
 
-    def __post_init__(self):
-        object.__setattr__(self, 'v', self.validate_password_strength())
+    # List of common weak passwords to reject
+    COMMON_WEAK_PASSWORDS = {
+        'password',
+        'password123',
+        '12345678',
+        'qwerty',
+        'abc123',
+        'password1',
+        '123456789',
+        'admin123',
+        'letmein',
+        'welcome',
+        'monkey',
+        'dragon',
+        'master',
+        'sunshine',
+        'princess',
+        'football',
+        'baseball',
+        'superman',
+    }
 
-    def validate_password_strength(self):
-        # 1. Validación de longitud (ser mayor a 8 caracteres, interpretado como >= 8)
-        if len(self.v) < 8:
-            raise InvaiidPasswordFormatException('must be at least 8 characters long')
+    @classmethod
+    def validate(cls, value: str) -> 'Password':
+        """
+        Validate password strength and return Password instance.
 
-        # 2. Validación de minúscula
-        if not re.search(r'[a-z]', self.v):
-            raise InvaiidPasswordFormatException(
-                'must contain at least one lowercase letter'
+        Args:
+            value: The password string to validate
+
+        Returns:
+            Password: Validated password instance
+
+        Raises:
+            InvalidPasswordFormatException: If password doesn't meet requirements
+        """
+        if not isinstance(value, str):
+            raise InvalidPasswordFormatException('Password must be a string')
+
+        # 1. Length validation
+        if len(value) < 8:
+            raise InvalidPasswordFormatException(
+                'Password must be at least 8 characters long'
             )
 
-        # 3. Validación de mayúscula
-        if not re.search(r'[A-Z]', self.v):
-            raise InvaiidPasswordFormatException(
-                'must contain at least one uppercase letter'
+        # 2. Lowercase letter validation
+        if not re.search(r'[a-z]', value):
+            raise InvalidPasswordFormatException(
+                'Password must contain at least one lowercase letter'
             )
 
-        # 4. Validación de número
-        if not re.search(r'\d', self.v):
-            raise InvaiidPasswordFormatException('must contain at least one digit')
-
-        # 5. Validación de carácter especial
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', self.v):
-            raise InvaiidPasswordFormatException(
-                'must contain at least one special character'
+        # 3. Uppercase letter validation
+        if not re.search(r'[A-Z]', value):
+            raise InvalidPasswordFormatException(
+                'Password must contain at least one uppercase letter'
             )
 
-        return self.v
+        # 4. Digit validation
+        if not re.search(r'\d', value):
+            raise InvalidPasswordFormatException(
+                'Password must contain at least one digit'
+            )
+
+        # 5. Special character validation
+        # Includes common special characters
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;\'`~]', value):
+            raise InvalidPasswordFormatException(
+                'Password must contain at least one special character (!@#$%^&*(),.?":{}|<>_-+=[]\\\/;\'`~)'
+            )
+
+        # 6. Common password validation
+        if value.lower() in cls.COMMON_WEAK_PASSWORDS:
+            raise InvalidPasswordFormatException(
+                'Password is too common and easily guessable. Please choose a stronger password'
+            )
+
+        # Return Password instance (which is a str subclass)
+        return cls(value)
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: type, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        """
+        Pydantic v2 core schema for Password validation.
+
+        This method tells Pydantic how to validate and serialize Password objects.
+        It ensures proper JSON serialization and clear error messages.
+        """
+        return core_schema.with_info_plain_validator_function(
+            cls._validate,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda instance: str(instance),
+                return_schema=core_schema.str_schema(),
+            ),
+        )
+
+    @classmethod
+    def _validate(cls, value: str, _info) -> 'Password':
+        """
+        Internal validation method for Pydantic.
+
+        This method is called by Pydantic during model validation.
+        It wraps the validate() method and ensures proper error handling.
+        """
+        return cls.validate(value)
+
+    def __repr__(self) -> str:
+        """String representation (hides actual password value)."""
+        return 'Password(***)'
+
+    def __str__(self) -> str:
+        """Return the actual password value as string."""
+        return super().__str__()

@@ -25,7 +25,7 @@ from .exceptions import (
     InactiveUserException,
     InsufficientBalanceException,
     InsufficientPermissionsException,
-    InvaiidPasswordFormatException,
+    InvalidPasswordFormatException,
     InvalidCredentialsException,
     InvalidSessionTypeException,
     InvalidStatusTransitionException,
@@ -93,7 +93,7 @@ def register_all_errors(app: FastAPI) -> None:
     # ==================== Authentication & Authorization ====================
 
     app.add_exception_handler(
-        InvaiidPasswordFormatException,
+        InvalidPasswordFormatException,
         create_exception_handler(
             status_code=status.HTTP_400_BAD_REQUEST,
             error_code='invalid_password_format',
