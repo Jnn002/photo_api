@@ -1,11 +1,11 @@
 meta {
-  name: Get Dashboard Stats (with params)
+  name: Get Stats (with params)
   type: http
-  seq: 101
+  seq: 2
 }
 
 get {
-  url: {{back}}/sessions/dashboard-stats?year=2025&month=10
+  url: {{back}}/dashboard/stats?year=2025&month=10
   body: none
   auth: inherit
 }

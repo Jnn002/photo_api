@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.error_handlers import register_all_errors
 from app.core.redis import close_redis_connection
+from app.dashboard.router import router as dashboard_router
 from app.sessions.router import router as sessions_router
 from app.users.router import router as users_router
 
@@ -238,3 +239,4 @@ app.include_router(users_router, prefix='/api/v1')
 app.include_router(clients_router, prefix='/api/v1')
 app.include_router(catalog_router, prefix='/api/v1')
 app.include_router(sessions_router, prefix='/api/v1')
+app.include_router(dashboard_router, prefix='/api/v1')

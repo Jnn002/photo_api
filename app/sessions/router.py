@@ -28,7 +28,6 @@ from app.sessions.models import (
     SessionStatusHistory,
 )
 from app.sessions.schemas import (
-    DashboardStats,
     SessionCancellation,
     SessionCreate,
     SessionDetailPublic,
@@ -96,44 +95,6 @@ async def create_session(
     """
     service = SessionService(db)
     return await service.create_session(data, created_by=current_user.id)  # type: ignore
-
-
-@sessions_router.get(
-    '/dashboard-stats',
-    response_model=DashboardStats,
-    status_code=status.HTTP_200_OK,
-    summary='Get dashboard statistics',
-    description='Get aggregated statistics for the photography studio dashboard. Requires session.view.all permission.',
-)
-async def get_dashboard_stats(
-    db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.view.all'))],
-    year: Annotated[int | None, Query(description='Year to filter (default: current year)')] = None,
-    month: Annotated[int | None, Query(ge=1, le=12, description='Month to filter 1-12 (default: current month)')] = None,
-) -> DashboardStats:
-    """
-    Get dashboard statistics for a specific month.
-
-    **Query parameters:**
-    - year: Year to filter (default: current year)
-    - month: Month to filter, 1-12 (default: current month)
-
-    **Response:**
-    - active_sessions_count: Count of sessions not in COMPLETED or CANCELED status
-    - sessions_this_month: Count of sessions created in the specified month
-    - total_revenue_this_month: Sum of payments (excluding refunds) received in the specified month
-    - pending_balance: Sum of pending balances across all active sessions
-    - sessions_by_status: Count of sessions grouped by status
-
-    **Use case:**
-    - Frontend dashboard displays these metrics to provide an overview of the studio's operations
-    - Coordinator/Admin can see financial health and session pipeline at a glance
-
-    **Permissions required:** session.view.all
-    """
-    service = SessionService(db)
-    stats = await service.get_dashboard_stats(year=year, month=month)
-    return DashboardStats(**stats)
 
 
 @sessions_router.get(

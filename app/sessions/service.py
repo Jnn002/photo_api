@@ -774,54 +774,6 @@ class SessionService:
         await self.db.refresh(session)
         return session
 
-    # ==================== Dashboard Statistics ====================
-
-    async def get_dashboard_stats(
-        self, year: int | None = None, month: int | None = None
-    ) -> dict:
-        """
-        Get dashboard statistics for a specific month.
-
-        Args:
-            year: Year to filter (default: current year)
-            month: Month to filter (default: current month)
-
-        Returns:
-            Dictionary with dashboard statistics:
-            - active_sessions_count: Count of sessions not in COMPLETED or CANCELED
-            - sessions_this_month: Count of sessions created in the specified month
-            - total_revenue_this_month: Sum of payments (excluding refunds) in the specified month
-            - pending_balance: Sum of pending balances across all active sessions
-            - sessions_by_status: List of dictionaries with status and count
-        """
-        from datetime import datetime
-
-        # Default to current year/month
-        now = datetime.now()
-        year = year or now.year
-        month = month or now.month
-
-        # Get all statistics in parallel
-        active_sessions = await self.repo.count_active_sessions()
-        sessions_this_month = await self.repo.count_sessions_by_created_month(year, month)
-        pending_balance = await self.repo.sum_pending_balance()
-        total_revenue = await self.payment_repo.sum_revenue_by_month(year, month)
-        sessions_by_status_raw = await self.repo.count_sessions_by_status()
-
-        # Format sessions_by_status
-        sessions_by_status = [
-            {'status': status, 'count': count}
-            for status, count in sessions_by_status_raw
-        ]
-
-        return {
-            'active_sessions_count': active_sessions,
-            'sessions_this_month': sessions_this_month,
-            'total_revenue_this_month': total_revenue,
-            'pending_balance': pending_balance,
-            'sessions_by_status': sessions_by_status,
-        }
-
 
 # ==================== Session Detail Service ====================
 
