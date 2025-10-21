@@ -19,35 +19,11 @@ headers {
   Authorization: Bearer {{token}}
 }
 
-docs {
-  # Get Dashboard Statistics
-
-  Este endpoint retorna las estadísticas agregadas para el dashboard del estudio fotográfico.
-
-  ## Parámetros opcionales:
-  - `year`: Año para filtrar (default: año actual)
-  - `month`: Mes para filtrar 1-12 (default: mes actual)
-
-  ## Respuesta:
-  - `active_sessions_count`: Conteo de sesiones NO en COMPLETED o CANCELED
-  - `sessions_this_month`: Conteo de sesiones creadas en el mes especificado
-  - `total_revenue_this_month`: Suma de pagos (excluyendo refunds) recibidos en el mes
-  - `pending_balance`: Suma de balances pendientes en todas las sesiones activas
-  - `sessions_by_status`: Array con conteo de sesiones agrupadas por estado
-
-  ## Permisos requeridos:
-  - `session.view.all`
-
-  ## Roles con acceso:
-  - admin
-  - coordinator
-}
-
 tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("should have dashboard stats structure", function() {
     expect(res.body).to.have.property('active_sessions_count');
     expect(res.body).to.have.property('sessions_this_month');
@@ -55,31 +31,55 @@ tests {
     expect(res.body).to.have.property('pending_balance');
     expect(res.body).to.have.property('sessions_by_status');
   });
-
+  
   test("active_sessions_count should be a number", function() {
     expect(res.body.active_sessions_count).to.be.a('number');
   });
-
+  
   test("sessions_this_month should be a number", function() {
     expect(res.body.sessions_this_month).to.be.a('number');
   });
-
+  
   test("total_revenue_this_month should be a string (Decimal)", function() {
     expect(res.body.total_revenue_this_month).to.be.a('string');
   });
-
+  
   test("pending_balance should be a string (Decimal)", function() {
     expect(res.body.pending_balance).to.be.a('string');
   });
-
+  
   test("sessions_by_status should be an array", function() {
     expect(res.body.sessions_by_status).to.be.an('array');
   });
-
+  
   test("sessions_by_status items should have status and count", function() {
     if (res.body.sessions_by_status.length > 0) {
       expect(res.body.sessions_by_status[0]).to.have.property('status');
       expect(res.body.sessions_by_status[0]).to.have.property('count');
     }
   });
+}
+
+docs {
+  # Get Dashboard Statistics
+  
+  Este endpoint retorna las estadísticas agregadas para el dashboard del estudio fotográfico.
+  
+  ## Parámetros opcionales:
+  - `year`: Año para filtrar (default: año actual)
+  - `month`: Mes para filtrar 1-12 (default: mes actual)
+  
+  ## Respuesta:
+  - `active_sessions_count`: Conteo de sesiones NO en COMPLETED o CANCELED
+  - `sessions_this_month`: Conteo de sesiones creadas en el mes especificado
+  - `total_revenue_this_month`: Suma de pagos (excluyendo refunds) recibidos en el mes
+  - `pending_balance`: Suma de balances pendientes en todas las sesiones activas
+  - `sessions_by_status`: Array con conteo de sesiones agrupadas por estado
+  
+  ## Permisos requeridos:
+  - `session.view.all`
+  
+  ## Roles con acceso:
+  - admin
+  - coordinator
 }
