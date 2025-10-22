@@ -1,0 +1,41 @@
+meta {
+  name: Get Stats (with params)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{back}}/dashboard/stats?year=2025&month=10
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  
+  test("should have dashboard stats structure", function() {
+    expect(res.body).to.have.property('active_sessions_count');
+    expect(res.body).to.have.property('sessions_this_month');
+    expect(res.body).to.have.property('total_revenue_this_month');
+    expect(res.body).to.have.property('pending_balance');
+    expect(res.body).to.have.property('sessions_by_status');
+  });
+}
+
+docs {
+  # Get Dashboard Statistics - With Year/Month Parameters
+  
+  Este endpoint retorna las estadísticas del dashboard para un mes específico.
+  
+  ## Ejemplo:
+  - Año: 2025
+  - Mes: 10 (Octubre)
+  
+  Útil para ver estadísticas históricas o comparar diferentes períodos.
+}

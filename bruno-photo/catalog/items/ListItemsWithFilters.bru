@@ -25,14 +25,14 @@ tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("should return paginated filtered results", function() {
     const data = res.body;
     expect(data).to.have.property('items');
     expect(data).to.have.property('total');
     expect(Array.isArray(data.items)).to.be.true;
   });
-
+  
   test("total should reflect filtered count", function() {
     const data = res.body;
     // Total should be count of active items of specified type only
@@ -45,7 +45,7 @@ tests {
       });
     }
   });
-
+  
   test("pagination metadata should be consistent", function() {
     const data = res.body;
     expect(data.limit).to.equal(20);

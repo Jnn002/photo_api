@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.error_handlers import register_all_errors
 from app.core.redis import close_redis_connection
+from app.dashboard.router import router as dashboard_router
 from app.sessions.router import router as sessions_router
 from app.users.router import router as users_router
 
@@ -67,6 +68,7 @@ app.add_middleware(
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
     expose_headers=settings.CORS_EXPOSE_HEADERS,
+    # expose_headers=settings.CORS_EXPOSE_HEADERS,
 )
 
 # Register all exception handlers
@@ -139,13 +141,13 @@ async def get_business_rules():
     ```typescript
     // In a ConfigService
     async loadBusinessRules(): Promise<BusinessRules> {
-      return this.http.get<BusinessRules>('/api/v1/config/business-rules').toPromise();
+        return this.http.get<BusinessRules>('/api/v1/config/business-rules').toPromise();
     }
 
     // Display message to user
     displayPaymentDeadline(session: Session) {
-      const daysUntilPayment = this.config.business_rules.payment_deadline_days;
-      return `Payment due within ${daysUntilPayment} days`;
+        const daysUntilPayment = this.config.business_rules.payment_deadline_days;
+        return `Payment due within ${daysUntilPayment} days`;
     }
     ```
     """
@@ -187,18 +189,18 @@ async def get_enums():
     ```typescript
     // Generate TypeScript enum
     export enum SessionStatus {
-      REQUEST = 'REQUEST',
-      NEGOTIATION = 'NEGOTIATION',
+        REQUEST = 'REQUEST',
+        NEGOTIATION = 'NEGOTIATION',
       // ... auto-generated from API
     }
 
     // Populate dropdown
     async ngOnInit() {
-      const enums = await this.api.getEnums();
-      this.statusOptions = enums.session_status.map(status => ({
+        const enums = await this.api.getEnums();
+        this.statusOptions = enums.session_status.map(status => ({
         value: status,
         label: this.translate(status) // i18n translation
-      }));
+        }));
     }
     ```
     """
@@ -238,3 +240,4 @@ app.include_router(users_router, prefix='/api/v1')
 app.include_router(clients_router, prefix='/api/v1')
 app.include_router(catalog_router, prefix='/api/v1')
 app.include_router(sessions_router, prefix='/api/v1')
+app.include_router(dashboard_router, prefix='/api/v1')

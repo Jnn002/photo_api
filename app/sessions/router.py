@@ -792,17 +792,18 @@ async def record_payment(
     return await service.record_payment(data, created_by=current_user.id)  # type: ignore
 
 
+# TODO: Check permission later, session.view**
 @sessions_router.get(
     '/{session_id}/payments',
     response_model=list[SessionPaymentPublic],
     status_code=status.HTTP_200_OK,
     summary='List session payments',
-    description='Get all payments for a session. Requires session.view permission.',
+    description='Get all payments for a session. Requires session.view.all permission.',
 )
 async def list_session_payments(
     session_id: Annotated[int, Field(gt=0)],
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.view'))],
+    current_user: Annotated[User, Depends(require_permission('session.view.all'))],
 ) -> list[SessionPayment]:
     """
     List all payments for a session.
@@ -810,7 +811,7 @@ async def list_session_payments(
     **Path parameters:**
     - session_id: Session ID
 
-    **Permissions required:** session.view
+    **Permissions required:** session.view.all
     """
     service = SessionPaymentService(db)
     return await service.list_session_payments(session_id)

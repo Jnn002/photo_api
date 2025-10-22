@@ -105,6 +105,8 @@ class PackageItemDetail(BaseModel):
     item_id: int
     item_code: str
     item_name: str
+    item_type: ItemType
+    item_unit_price: Decimal
     quantity: int
     display_order: int | None
 
@@ -116,7 +118,7 @@ class PackageCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     session_type: SessionType
-    base_price: Decimal = Field(..., gt=0, max_digits=10, decimal_places=2)
+    base_price: Decimal = Field(..., ge=0, max_digits=10, decimal_places=2)
     estimated_editing_days: int = Field(..., ge=1, le=365)
 
     @field_validator('code', 'name')
@@ -131,7 +133,7 @@ class PackageCreate(BaseModel):
     @classmethod
     def validate_positive_price(cls, v: Decimal) -> Decimal:
         """Ensure price is positive."""
-        if v <= 0:
+        if v < 0:
             raise ValueError('base_price must be greater than 0')
         return v
 

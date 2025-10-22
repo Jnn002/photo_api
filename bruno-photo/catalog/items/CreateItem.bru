@@ -16,14 +16,19 @@ headers {
 
 body:json {
   {
-    "code": "VIDEO NORMAL",
-    "name": "Video 360",
-    "description": "Video 360 con artefacto",
-    "item_type": "Video",
-    "unit_price": "300.00",
+    "code": "VIDEO-NORMAL-4",
+    "name": "Video Normal 2",
+    "description": "Video 2 Test",
+    "item_type": "Digital Photo",
+    "unit_price": "30.00",
     "unit_measure": "Unit",
     "default_quantity": 1
   }
+}
+
+script:post-response {
+  bru.setVar("item_id", res.body.id);
+  
 }
 
 tests {

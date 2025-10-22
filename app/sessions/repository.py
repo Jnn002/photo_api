@@ -224,6 +224,69 @@ class SessionRepository:
         result = await self.db.exec(statement)
         return result.one()
 
+    # ==================== Dashboard Statistics ====================
+
+    async def count_active_sessions(self) -> int:
+        """
+        Count sessions that are active (not COMPLETED or CANCELED).
+
+        Returns:
+            Count of active sessions
+        """
+        statement = select(func.count(SessionModel.id)).where(
+            col(SessionModel.status).not_in([SessionStatus.COMPLETED, SessionStatus.CANCELED])
+        )
+        result = await self.db.exec(statement)
+        return result.one()
+
+    async def count_sessions_by_created_month(self, year: int, month: int) -> int:
+        """
+        Count sessions created in a specific month.
+
+        Args:
+            year: Year to filter
+            month: Month to filter (1-12)
+
+        Returns:
+            Count of sessions created in the specified month
+        """
+        from datetime import datetime
+        from sqlalchemy import extract
+
+        statement = select(func.count(SessionModel.id)).where(
+            extract('year', SessionModel.created_at) == year,
+            extract('month', SessionModel.created_at) == month
+        )
+        result = await self.db.exec(statement)
+        return result.one()
+
+    async def sum_pending_balance(self) -> Decimal:
+        """
+        Sum of pending balances across all active sessions.
+
+        Returns:
+            Total pending balance (balance_amount) for active sessions
+        """
+        statement = select(func.coalesce(func.sum(SessionModel.balance_amount), 0)).where(
+            col(SessionModel.status).not_in([SessionStatus.COMPLETED, SessionStatus.CANCELED])
+        )
+        result = await self.db.exec(statement)
+        return Decimal(str(result.one()))
+
+    async def count_sessions_by_status(self) -> list[tuple[SessionStatus, int]]:
+        """
+        Count sessions grouped by status.
+
+        Returns:
+            List of tuples (status, count) for all session statuses
+        """
+        statement = (
+            select(SessionModel.status, func.count(SessionModel.id))
+            .group_by(SessionModel.status)
+        )
+        result = await self.db.exec(statement)
+        return list(result.all())
+
 
 # ==================== Session Detail Repository ====================
 
@@ -334,6 +397,30 @@ class SessionPaymentRepository:
         await self.db.flush()
         await self.db.refresh(payment)
         return payment
+
+    async def sum_revenue_by_month(self, year: int, month: int) -> Decimal:
+        """
+        Sum total revenue (payments excluding refunds) for a specific month.
+
+        Args:
+            year: Year to filter
+            month: Month to filter (1-12)
+
+        Returns:
+            Total revenue for the specified month
+        """
+        from sqlalchemy import extract
+
+        statement = (
+            select(func.coalesce(func.sum(SessionPayment.amount), 0))
+            .where(SessionPayment.payment_type != PaymentType.REFUND)
+            .where(
+                extract('year', SessionPayment.payment_date) == year,
+                extract('month', SessionPayment.payment_date) == month
+            )
+        )
+        result = await self.db.exec(statement)
+        return Decimal(str(result.one()))
 
 
 # ==================== Session Photographer Repository ====================
