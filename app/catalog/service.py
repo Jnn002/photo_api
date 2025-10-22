@@ -426,6 +426,8 @@ class PackageService:
                 item_id=pi.item_id,
                 item_code=pi.item.code,
                 item_name=pi.item.name,
+                item_type=pi.item.item_type,
+                item_unit_price=pi.item.unit_price,
                 quantity=pi.quantity,
                 display_order=pi.display_order,
             )
