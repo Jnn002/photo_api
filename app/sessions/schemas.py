@@ -134,7 +134,15 @@ class SessionUpdate(BaseModel):
 
 
 class SessionPublic(BaseModel):
-    """Public session response schema."""
+    """
+    Public session response schema.
+
+    Financial fields explanation:
+    - total_amount: Total cost of the session (sum of all line items)
+    - deposit_amount: Required initial payment (typically 50% of total) - informational
+    - paid_amount: Actual amount paid by client so far
+    - balance_amount: Remaining amount to be paid (total_amount - paid_amount)
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -437,9 +445,13 @@ class SessionDelivery(BaseModel):
     @model_validator(mode='after')
     def validate_delivery_requirements(self) -> Self:
         """Validate delivery method-specific requirements."""
-        if self.delivery_method in [
-            DeliveryMethod.PHYSICAL,
-            DeliveryMethod.BOTH,
-        ] and not self.delivery_address:
+        if (
+            self.delivery_method
+            in [
+                DeliveryMethod.PHYSICAL,
+                DeliveryMethod.BOTH,
+            ]
+            and not self.delivery_address
+        ):
             raise ValueError('delivery_address required for Physical delivery')
         return self

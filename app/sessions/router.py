@@ -742,9 +742,12 @@ async def recalculate_session_totals(
 
     **Recalculates:**
     - total_amount: Sum of all detail line_subtotals
-    - deposit_amount: total * deposit_percentage (default 50%)
-    - balance_amount: total - deposit
+    - deposit_amount: total * deposit_percentage (default 50%) - informational only
+    - balance_amount: total - paid_amount (remaining balance to be paid)
     - paid_amount: Sum of all payments minus refunds
+
+    **Note:** balance_amount always represents the remaining amount the client owes,
+    regardless of whether they've paid the deposit or not.
 
     **Permissions required:** session.edit.all
     """
@@ -783,8 +786,13 @@ async def record_payment(
     - notes: Additional notes (optional)
 
     **Business rules:**
-    - Payment amount cannot exceed remaining balance
+    - Payment amount cannot exceed remaining balance (total_amount - paid_amount)
     - Session paid_amount is updated automatically
+    - Session balance_amount is recalculated as: total_amount - paid_amount
+
+    **Auto-updates:**
+    - paid_amount: Increases by payment amount
+    - balance_amount: Recalculated to reflect remaining balance
 
     **Permissions required:** session.payment
     """

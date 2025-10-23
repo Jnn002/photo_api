@@ -10,19 +10,18 @@ This module provides business logic for session-related operations:
 For business rules, see files/business_rules_doc.md
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.catalog.models import Item, Package, PackageItem
+from app.catalog.models import PackageItem
 from app.catalog.repository import ItemRepository, PackageRepository, RoomRepository
 from app.clients.repository import ClientRepository
 from app.core.config import settings
 from app.core.enums import (
-    DeliveryMethod,
     LineType,
     PaymentType,
     ReferenceType,
@@ -32,7 +31,6 @@ from app.core.enums import (
 )
 from app.core.exceptions import (
     ClientNotFoundException,
-    DeadlineExpiredException,
     InactiveClientException,
     InactiveResourceException,
     InsufficientBalanceException,
@@ -67,7 +65,6 @@ from app.sessions.repository import (
 from app.sessions.schemas import (
     SessionCancellation,
     SessionCreate,
-    SessionDetailCreate,
     SessionPaymentCreate,
     SessionPhotographerAssign,
     SessionUpdate,
@@ -128,13 +125,17 @@ class SessionService:
         SessionStatus.CANCELED: [],  # Terminal state
     }
 
-    def _is_valid_transition(self, from_status: SessionStatus, to_status: SessionStatus) -> bool:
+    def _is_valid_transition(
+        self, from_status: SessionStatus, to_status: SessionStatus
+    ) -> bool:
         """Check if a status transition is valid."""
         return to_status in self.VALID_TRANSITIONS.get(from_status, [])
 
     # ==================== CRUD Operations ====================
 
-    async def create_session(self, data: SessionCreate, created_by: int) -> SessionModel:
+    async def create_session(
+        self, data: SessionCreate, created_by: int
+    ) -> SessionModel:
         """
         Create a new session in REQUEST status.
 
@@ -230,7 +231,9 @@ class SessionService:
         Priority: specific filters > status > all
         """
         if start_date and end_date:
-            return await self.repo.list_by_date_range(start_date, end_date, limit, offset)
+            return await self.repo.list_by_date_range(
+                start_date, end_date, limit, offset
+            )
 
         if client_id:
             return await self.repo.list_by_client(client_id, limit, offset)
@@ -352,14 +355,16 @@ class SessionService:
 
         # Check if session is editable (not past changes deadline)
         if session.changes_deadline and date.today() > session.changes_deadline:
-            raise SessionNotEditableException(
-                session_id, str(session.changes_deadline)
-            )
+            raise SessionNotEditableException(session_id, str(session.changes_deadline))
 
         # Validate room availability if changing room or datetime
         update_dict = data.model_dump(exclude_unset=True)
 
-        if 'room_id' in update_dict or 'session_date' in update_dict or 'session_time' in update_dict:
+        if (
+            'room_id' in update_dict
+            or 'session_date' in update_dict
+            or 'session_time' in update_dict
+        ):
             room_id = update_dict.get('room_id', session.room_id)
             session_date = update_dict.get('session_date', session.session_date)
             session_time = update_dict.get('session_time', session.session_time)
@@ -633,7 +638,9 @@ class SessionService:
 
         return session
 
-    async def _calculate_refund(self, session: SessionModel, initiated_by: str) -> Decimal:
+    async def _calculate_refund(
+        self, session: SessionModel, initiated_by: str
+    ) -> Decimal:
         """
         Calculate refund amount based on status and who initiated cancellation.
 
@@ -661,9 +668,9 @@ class SessionService:
 
         Updates:
         - total_amount (sum of all detail line_subtotals)
-        - deposit_amount (total * deposit_percentage)
-        - balance_amount (total - deposit)
-        - paid_amount (sum of all payments)
+        - deposit_amount (total * deposit_percentage) - informational only
+        - balance_amount (total - paid_amount) - actual remaining balance
+        - paid_amount (sum of all payments minus refunds)
         """
         session = await self.get_session(session_id)
 
@@ -673,17 +680,18 @@ class SessionService:
         # Calculate total from details
         total = sum(detail.line_subtotal for detail in details)
 
-        # Calculate deposit (default 50%)
+        # Calculate deposit (default 50%) - informational only, represents required initial payment
         deposit_percentage = Decimal(str(settings.DEFAULT_DEPOSIT_PERCENTAGE))
         deposit = (total * deposit_percentage) / Decimal('100')
-
-        # Calculate balance
-        balance = total - deposit
 
         # Get paid amount from payments
         paid = await self.payment_repo.get_total_paid(session_id)
         refunded = await self.payment_repo.get_total_refunded(session_id)
         net_paid = paid - refunded
+
+        # Calculate balance: total minus what has actually been paid
+        # This represents the remaining amount the client still owes
+        balance = total - net_paid
 
         # Update session
         session.total_amount = total
@@ -805,9 +813,7 @@ class SessionDetailService:
 
         # Check if session is editable
         if session.changes_deadline and date.today() > session.changes_deadline:
-            raise SessionNotEditableException(
-                session_id, str(session.changes_deadline)
-            )
+            raise SessionNotEditableException(session_id, str(session.changes_deadline))
 
         # Validate item
         item = await self.item_repo.get_by_id(item_id)
@@ -860,9 +866,7 @@ class SessionDetailService:
 
         # Check if session is editable
         if session.changes_deadline and date.today() > session.changes_deadline:
-            raise SessionNotEditableException(
-                session_id, str(session.changes_deadline)
-            )
+            raise SessionNotEditableException(session_id, str(session.changes_deadline))
 
         # Validate package
         package = await self.package_repo.get_with_items(package_id)
@@ -935,7 +939,11 @@ class SessionDetailService:
 
         # Validate session is editable
         session = await self.session_repo.get_by_id(detail.session_id)
-        if session and session.changes_deadline and date.today() > session.changes_deadline:
+        if (
+            session
+            and session.changes_deadline
+            and date.today() > session.changes_deadline
+        ):
             raise SessionNotEditableException(
                 detail.session_id, str(session.changes_deadline)
             )
@@ -971,14 +979,18 @@ class SessionPaymentService:
 
         Auto-updates:
         - paid_amount: Adds new payment to total paid
-        - balance_amount: Recalculates remaining balance (total - paid)
+        - balance_amount: Recalculates remaining balance (total - paid_amount)
+
+        Note:
+        - balance_amount always represents: total_amount - paid_amount
+        - deposit_amount is informational only (required initial payment, typically 50%)
         """
         # Validate session
         session = await self.session_repo.get_by_id(data.session_id)
         if not session:
             raise SessionNotFoundException(data.session_id)
 
-        # Validate payment amount
+        # Validate payment amount doesn't exceed remaining balance
         remaining_balance = session.total_amount - session.paid_amount
         if data.amount > remaining_balance:
             raise InsufficientBalanceException(
@@ -1004,7 +1016,7 @@ class SessionPaymentService:
 
         # Update session financial fields
         session.paid_amount += data.amount
-        # Recalculate balance: total - paid (this replaces the previous deposit-based calculation)
+        # Recalculate balance: remaining amount to be paid
         session.balance_amount = session.total_amount - session.paid_amount
 
         self.db.add(session)
@@ -1134,7 +1146,11 @@ class SessionPhotographerService:
         return assignment
 
     async def mark_my_attendance(
-        self, session_id: int, photographer_id: int, marked_by: int, notes: str | None = None
+        self,
+        session_id: int,
+        photographer_id: int,
+        marked_by: int,
+        notes: str | None = None,
     ) -> SessionPhotographer:
         """
         Mark photographer attendance for the current user (simplified endpoint).
