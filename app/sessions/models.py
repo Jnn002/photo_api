@@ -55,7 +55,11 @@ class Session(SQLModel, table=True):
     # State machine
     status: SessionStatus
 
-    # Financial
+    # Financial fields
+    # - total_amount: Total cost of the session (sum of all details)
+    # - deposit_amount: Required initial payment (typically 50% of total) - informational
+    # - paid_amount: Actual amount paid by client (sum of payments - refunds)
+    # - balance_amount: Remaining amount to be paid (total_amount - paid_amount)
     total_amount: Decimal = Field(
         default=Decimal('0.00'), max_digits=10, decimal_places=2
     )

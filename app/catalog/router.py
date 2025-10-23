@@ -501,6 +501,8 @@ async def add_item_to_package(
         item_id=package_item.item_id,
         item_code=package_item.item.code,
         item_name=package_item.item.name,
+        item_type=package_item.item.item_type,
+        item_unit_price=package_item.item.unit_price,
         quantity=package_item.quantity,
         display_order=package_item.display_order,
     )

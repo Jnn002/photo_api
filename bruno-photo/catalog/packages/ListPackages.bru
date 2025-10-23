@@ -24,7 +24,7 @@ tests {
   test("should return 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("should return paginated response structure", function() {
     const data = res.body;
     expect(data).to.have.property('items');
@@ -33,12 +33,12 @@ tests {
     expect(data).to.have.property('offset');
     expect(data).to.have.property('has_more');
   });
-
+  
   test("should return array of packages", function() {
     const data = res.body;
     expect(Array.isArray(data.items)).to.be.true;
   });
-
+  
   test("pagination metadata should be valid", function() {
     const data = res.body;
     expect(data.total).to.be.a('number');

@@ -291,10 +291,12 @@ class PackageService:
         """
         Add an item to a package.
 
+        If the item already exists in the package, the quantity is incremented
+        by the new quantity instead of creating a duplicate.
+
         Validates:
         - Package exists and is active
         - Item exists and is active
-        - Item is not already in the package
         """
         # Validate package
         package = await self.get_active_package(package_id)
@@ -316,9 +318,13 @@ class PackageService:
         existing = result.first()
 
         if existing:
-            raise DuplicateCodeException(
-                f'Item {item.name} is already in package {package.name}'
-            )
+            # Update existing item by adding the new quantity
+            existing.quantity += data.quantity
+            self.db.add(existing)
+            await self.db.flush()
+            await self.db.refresh(existing)
+            await self.db.commit()
+            return existing
 
         # Create package-item link
         package_item = PackageItem(

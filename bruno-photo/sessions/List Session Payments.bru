@@ -1,0 +1,24 @@
+meta {
+  name: List Session Payments
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{back}}/sessions/:session_id/payments
+  body: none
+  auth: inherit
+}
+
+params:path {
+  session_id: 23
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
