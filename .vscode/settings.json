@@ -3,5 +3,5 @@
     "python.analysis.autoImportCompletions": true,
     "cursorpyright.analysis.autoImportCompletions": true,
     "cursorpyright.analysis.typeCheckingMode": "basic",
-    "python.languageServer": "None"
+    "python.languageServer": "Pylance"
 }
