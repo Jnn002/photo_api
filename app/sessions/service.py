@@ -191,7 +191,7 @@ class SessionService:
 
         # Create initial status history
         await self._record_status_change(
-            session.id,
+            session.id,  # type: ignore
             None,
             SessionStatus.REQUEST,
             created_by,
@@ -444,7 +444,7 @@ class SessionService:
         """
         if to_status == SessionStatus.PRE_SCHEDULED:
             # VALIDATION: Session must have at least one item and total > 0
-            details = await self.detail_repo.list_by_session(session.id)
+            details = await self.detail_repo.list_by_session(session.id)  # type: ignore
             if not details:
                 from app.core.exceptions import InvalidStatusTransitionException
 
@@ -479,7 +479,7 @@ class SessionService:
             # VALIDATION: Deposit payment must be verified
             if session.paid_amount < session.deposit_amount:
                 raise InsufficientBalanceException(
-                    session.id,
+                    session.id,  # type: ignore
                     float(session.deposit_amount - session.paid_amount),
                     0.0,
                 )
@@ -487,7 +487,7 @@ class SessionService:
         elif to_status == SessionStatus.ASSIGNED:
             # VALIDATION: At least one photographer must be assigned
             photographer_repo = SessionPhotographerRepository(self.db)
-            photographers = await photographer_repo.list_by_session(session.id)
+            photographers = await photographer_repo.list_by_session(session.id)  # type: ignore
             if not photographers:
                 from app.core.exceptions import InvalidStatusTransitionException
 
@@ -541,7 +541,7 @@ class SessionService:
             if session.paid_amount < session.total_amount:
                 remaining = session.total_amount - session.paid_amount
                 raise InsufficientBalanceException(
-                    session.id,
+                    session.id,  # type: ignore
                     float(remaining),
                     float(session.total_amount),
                 )
@@ -694,7 +694,7 @@ class SessionService:
         balance = total - net_paid
 
         # Update session
-        session.total_amount = total
+        session.total_amount = total  # type: ignore
         session.deposit_amount = deposit
         session.balance_amount = balance
         session.paid_amount = net_paid
@@ -721,8 +721,27 @@ class SessionService:
         - This order ensures the validation can find the editor assignment
 
         This ensures the editing phase starts immediately when editor is assigned.
+
+        Validates:
+        - Session exists
+        - Session is in ATTENDED status or later
         """
         session = await self.get_session(session_id)
+
+        # Validate session status - editors can only be assigned to ATTENDED or later sessions
+        VALID_STATES_FOR_EDITOR_ASSIGNMENT = [
+            SessionStatus.ATTENDED,
+            SessionStatus.IN_EDITING,
+            SessionStatus.READY_FOR_DELIVERY,
+        ]
+
+        if session.status not in VALID_STATES_FOR_EDITOR_ASSIGNMENT:
+            from app.core.exceptions import InvalidSessionStateException
+
+            raise InvalidSessionStateException(
+                f'Cannot assign editor to session in {session.status.value} status. '
+                f'Session must be in ATTENDED status or later to assign editors.'
+            )
 
         # Assign editor FIRST
         session.editing_assigned_to = editor_id
@@ -1054,12 +1073,28 @@ class SessionPhotographerService:
 
         Validates:
         - Session exists
+        - Session is in CONFIRMED status or later
         - Photographer is available for the session date/time
         """
         # Validate session
         session = await self.session_repo.get_by_id(data.session_id)
         if not session:
             raise SessionNotFoundException(data.session_id)
+
+        # Validate session status - photographers can only be assigned to CONFIRMED or later sessions
+        VALID_STATES_FOR_PHOTOGRAPHER_ASSIGNMENT = [
+            SessionStatus.CONFIRMED,
+            SessionStatus.ASSIGNED,
+            SessionStatus.ATTENDED,
+        ]
+
+        if session.status not in VALID_STATES_FOR_PHOTOGRAPHER_ASSIGNMENT:
+            from app.core.exceptions import InvalidSessionStateException
+
+            raise InvalidSessionStateException(
+                f'Cannot assign photographer to session in {session.status.value} status. '
+                f'Session must be in CONFIRMED status or later to assign photographers.'
+            )
 
         # Check photographer availability
         if session.session_time:
@@ -1180,7 +1215,7 @@ class SessionPhotographerService:
             raise PhotographerNotAssignedException(photographer_id, session_id)
 
         # Delegate to existing mark_attended method
-        return await self.mark_attended(assignment.id, marked_by, notes)
+        return await self.mark_attended(assignment.id, marked_by, notes)  # type: ignore
 
     async def remove_assignment(self, assignment_id: int) -> None:
         """Remove photographer assignment."""

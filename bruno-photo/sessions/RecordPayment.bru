@@ -11,7 +11,7 @@ post {
 }
 
 params:path {
-  session_id: {{session_id}}
+  session_id: 24
 }
 
 headers {
@@ -20,12 +20,12 @@ headers {
 
 body:json {
   {
-    "session_id": {{session_id}},
+    "session_id": 24,
     "payment_type": "Deposit",
     "payment_method": "Transfer",
-    "amount": "600.00",
+    "amount": "200.00",
     "transaction_reference": "TRX-2025-001",
-    "payment_date": "2025-10-14",
+    "payment_date": "2025-10-23",
     "notes": "Depósito inicial 50%"
   }
 }

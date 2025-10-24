@@ -313,3 +313,10 @@ class PhotographerNotAssignedException(BusinessValidationException):
         super().__init__(
             f'Photographer {photographer_id} is not assigned to session {session_id}'
         )
+
+
+class InvalidSessionStateException(BusinessValidationException):
+    """Session is not in a valid state for this operation."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
