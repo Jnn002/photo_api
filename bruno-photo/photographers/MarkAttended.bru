@@ -1,0 +1,45 @@
+meta {
+  name: Mark Session Attended
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{back}}/photographers/sessions/12/attend
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "attended": true,
+    "notes": "Session completed successfully. Client was very happy with the results."
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Mark a session as attended by the photographer.
+  
+  **Request body:**
+  - attended: true to mark attended, false to unmark
+  - notes: Optional observations about the session
+  
+  **Business rules:**
+  - Session must be in ASSIGNED status
+  - Session date must have passed
+  - If all photographers mark attended, session transitions to ATTENDED
+  
+  **Requirements:**
+  - Must be logged in as photographer
+  - Requires session.mark-attended permission
+  - Must be assigned to this session
+}
