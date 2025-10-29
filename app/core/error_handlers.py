@@ -25,8 +25,8 @@ from .exceptions import (
     InactiveUserException,
     InsufficientBalanceException,
     InsufficientPermissionsException,
-    InvalidPasswordFormatException,
     InvalidCredentialsException,
+    InvalidPasswordFormatException,
     InvalidSessionTypeException,
     InvalidStatusTransitionException,
     InvalidTokenException,
@@ -36,6 +36,7 @@ from .exceptions import (
     ResourceConflictException,
     ResourceNotFoundException,
     RoomNotAvailableException,
+    SessionNotAccessibleToPhotographerException,
     SessionNotEditableException,
     StudioException,
     TokenExpiredException,
@@ -407,6 +408,22 @@ def register_all_errors(app: FastAPI) -> None:
                 'message': str(exc),
                 'error_code': 'business_validation_error',
                 'detail': {},
+            },
+        )
+
+    @app.exception_handler(SessionNotAccessibleToPhotographerException)
+    async def session_not_accessible_to_photographer_handler(
+        request: Request, exc: SessionNotAccessibleToPhotographerException
+    ):
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                'message': str(exc),
+                'error_code': 'session_not_accessible',
+                'detail': {
+                    'session_id': exc.session_id,
+                    'current_status': exc.current_status,
+                },
             },
         )
 

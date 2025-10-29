@@ -320,3 +320,15 @@ class InvalidSessionStateException(BusinessValidationException):
 
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class SessionNotAccessibleToPhotographerException(BusinessValidationException):
+    """Session is not accessible to photographers in its current state."""
+
+    def __init__(self, session_id: int, current_status: str):
+        self.session_id = session_id
+        self.current_status = current_status
+        super().__init__(
+            f'Session {session_id} with status {current_status} is not accessible to photographers. '
+            f'Photographers can only access sessions with status ASSIGNED.'
+        )
