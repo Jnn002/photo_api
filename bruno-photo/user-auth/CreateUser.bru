@@ -1,7 +1,7 @@
 meta {
   name: CreateUser
   type: http
-  seq: 5
+  seq: 6
 }
 
 post {
@@ -17,7 +17,7 @@ headers {
 body:json {
   {
     "full_name": "Xianling",
-    "email": "user@coord.com",
+    "email": "xianling@user.com",
     "password": "Admin1_admin",
     "phone": "20202020"
   }
@@ -25,4 +25,5 @@ body:json {
 
 settings {
   encodeUrl: true
+  timeout: 0
 }

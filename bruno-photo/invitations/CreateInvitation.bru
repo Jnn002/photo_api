@@ -1,0 +1,81 @@
+meta {
+  name: Create Invitation
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{back}}/invitations
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "email": "newuser@studio.com",
+    "custom_message": "¡Bienvenido al equipo del estudio fotográfico! Estamos emocionados de trabajar contigo."
+  }
+}
+
+tests {
+  test("Status code is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response has invitation_url", function() {
+    expect(res.getBody().invitation_url).to.be.a('string');
+  });
+  
+  test("Response has email", function() {
+    expect(res.getBody().email).to.equal('newuser@studio.com');
+  });
+  
+  test("Response has expires_at", function() {
+    expect(res.getBody().expires_at).to.be.a('string');
+  });
+  
+  // Save invitation URL for subsequent tests
+  if (res.getStatus() === 201) {
+    const invitationUrl = res.getBody().invitation_url;
+    const token = invitationUrl.split('invitation=')[1];
+    bru.setVar('invitationToken', token);
+  }
+}
+
+docs {
+  # Create Invitation
+  
+  Creates a new invitation for a team member.
+  
+  **Required permission:** `user:create`
+  
+  **Request:**
+  - `email`: Email address of the person to invite (required)
+  - `custom_message`: Optional personalized welcome message (max 500 chars)
+  
+  **Response:**
+  - `invitation_url`: Full URL for the invitee to accept
+  - `email`: Email address of the invitee
+  - `expires_at`: When the invitation expires (UTC)
+  - `message`: Success message
+  
+  **Business rules:**
+  - Email must not be already registered
+  - Invitation expires in 7 days (configurable)
+  - Email is sent asynchronously via Celery
+  - Token is stored in Redis with automatic TTL
+  
+  **Example response:**
+  ```json
+  {
+    "invitation_url": "http://localhost:4200/register?invitation=abc123...",
+    "email": "newuser@studio.com",
+    "expires_at": "2025-10-31T12:00:00",
+    "message": "Invitation sent successfully to newuser@studio.com"
+  }
+  ```
+}

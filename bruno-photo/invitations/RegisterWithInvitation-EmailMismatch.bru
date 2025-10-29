@@ -1,0 +1,48 @@
+meta {
+  name: Register - Email Mismatch
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{back}}/auth/register?invitation_token={{invitationToken}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "full_name": "Wrong Email User",
+    "email": "wrongemail@studio.com",
+    "password": "SecurePassword123!",
+    "phone": "+502 9999-9999"
+  }
+}
+
+docs {
+  # Register with Invitation - Email Mismatch Test
+
+  Tests that registration fails when the email in the request body doesn't match
+  the email associated with the invitation token.
+
+  **Expected behavior:**
+  - Status code: 400 or 401
+  - Error message indicating email mismatch
+
+  **Security:**
+  This prevents someone from using another person's invitation token to register
+  with a different email address.
+}
+
+tests {
+  test("Status code is 400 or 401", function() {
+    const status = res.getStatus();
+    expect([400, 401]).to.include(status);
+  });
+
+  test("Error message mentions email mismatch", function() {
+    const body = res.getBody();
+    const message = body.detail || body.message || '';
+    expect(message.toLowerCase()).to.match(/email|match/);
+  });
+}

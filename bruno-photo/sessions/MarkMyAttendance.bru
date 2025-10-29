@@ -11,7 +11,7 @@ patch {
 }
 
 params:path {
-  session_id: {{session_id}}
+  session_id: 22
 }
 
 headers {
@@ -27,6 +27,7 @@ body:json {
 
 settings {
   encodeUrl: true
+  timeout: 0
 }
 
 docs {

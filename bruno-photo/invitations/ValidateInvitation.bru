@@ -1,0 +1,74 @@
+meta {
+  name: Validate Invitation
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{back}}/invitations/validate/{{invitationToken}}
+  body: none
+  auth: none
+}
+
+docs {
+  # Validate Invitation Token
+
+  Validates an invitation token. This is a **public endpoint** (no authentication required).
+
+  **Use case:** Frontend calls this endpoint when user opens invitation link to verify
+  if the token is valid before showing the registration form.
+
+  **Path parameters:**
+  - `token`: Invitation token to validate
+
+  **Response:**
+  - `is_valid`: Whether the token is valid (boolean)
+  - `email`: Email address if valid, null otherwise
+  - `message`: Validation message
+
+  **Validation checks:**
+  - Token must exist in Redis (not expired)
+  - Email must not be already registered
+  - If email registered after invitation, token is auto-invalidated
+
+  **Example responses:**
+
+  Valid token:
+  ```json
+  {
+    "is_valid": true,
+    "email": "newuser@studio.com",
+    "message": "Invitation is valid"
+  }
+  ```
+
+  Invalid/expired token:
+  ```json
+  {
+    "is_valid": false,
+    "email": null,
+    "message": "Invalid or expired invitation token"
+  }
+  ```
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has is_valid field", function() {
+    expect(res.getBody().is_valid).to.be.a('boolean');
+  });
+
+  test("Response has message", function() {
+    expect(res.getBody().message).to.be.a('string');
+  });
+
+  test("If valid, email is present", function() {
+    const body = res.getBody();
+    if (body.is_valid) {
+      expect(body.email).to.be.a('string');
+    }
+  });
+}

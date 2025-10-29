@@ -16,12 +16,12 @@ from pydantic import Field
 
 from app.core.dependencies import CurrentActiveUser, SessionDep
 from app.core.permissions import require_permission
+from app.core.schemas import PaginatedResponse
 from app.core.security import (
     create_access_token,
     oauth2_scheme,
     verify_refresh_token,
 )
-from app.core.schemas import PaginatedResponse
 from app.users.models import Role, User
 from app.users.schemas import (
     LogoutRequest,
@@ -260,11 +260,14 @@ async def list_users(
     - limit: Maximum number of users to return (1-100, default: 50)
     - offset: Number of users to skip for pagination (default: 0)
 
+
     **Permissions required:** user.list
     """
     service = UserService(db)
 
-    items = await service.list_users(active_only=active_only, limit=limit, offset=offset)
+    items = await service.list_users(
+        active_only=active_only, limit=limit, offset=offset
+    )
     total = await service.count_users(active_only=active_only)
 
     return PaginatedResponse(
@@ -273,7 +276,54 @@ async def list_users(
         limit=limit,
         offset=offset,
         has_more=(offset + len(items)) < total,
+    )  # type: ignore
+
+
+@users_router.get(
+    '/with-roles',
+    response_model=PaginatedResponse[UserWithRoles],
+    status_code=status.HTTP_200_OK,
+    summary='List users with roles',
+    description='Get paginated list of users with their assigned roles. Requires user.list permission.',
+)
+async def list_users_with_roles(
+    db: SessionDep,
+    current_user: Annotated[User, Depends(require_permission('user.list'))],
+    active_only: Annotated[
+        bool, Query(description='Filter for active users only')
+    ] = False,
+    limit: Annotated[
+        int, Query(ge=1, le=100, description='Maximum number of results')
+    ] = 50,
+    offset: Annotated[int, Query(ge=0, description='Number of results to skip')] = 0,
+) -> PaginatedResponse[UserWithRoles]:
+    """
+    List users with their assigned roles (pagination enabled).
+
+    This endpoint is optimized for frontend consumption, providing users
+    with their roles included in a single request.
+
+    **Query parameters:**
+    - active_only: If true, return only active users (default: false)
+    - limit: Maximum number of users to return (1-100, default: 50)
+    - offset: Number of users to skip for pagination (default: 0)
+
+    **Permissions required:** user.list
+    """
+    service = UserService(db)
+
+    items = await service.list_users_with_roles(
+        active_only=active_only, limit=limit, offset=offset
     )
+    total = await service.count_users(active_only=active_only)
+
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(items)) < total,
+    )  # type: ignore
 
 
 @users_router.post(
@@ -310,11 +360,14 @@ async def create_user(
     response_model=UserPublic,
     status_code=status.HTTP_201_CREATED,
     summary='Public user registration',
-    description='Register a new user without authentication. User gets basic "user" role.',
+    description='Register a new user without authentication. User gets basic "user" role. Optionally accepts invitation token.',
 )
 async def register_user(
     data: UserCreate,
     db: SessionDep,
+    invitation_token: Annotated[
+        str | None, Query(description='Optional invitation token')
+    ] = None,
 ) -> UserPublic:
     """
     Public endpoint for user self-registration.
@@ -327,11 +380,40 @@ async def register_user(
     - email: Unique email address
     - password: Strong password
 
+    **Optional query parameters:**
+    - invitation_token: If provided, validates the token and verifies email matches
+
+    **Registration flow with invitation:**
+    1. User receives invitation email with token
+    2. Frontend calls GET /invitations/validate/{token} to get email
+    3. Frontend pre-fills email (readonly) in registration form
+    4. User completes registration with invitation_token query param
+    5. Backend validates token, creates user, invalidates token
+    6. Admin assigns roles via POST /users/{id}/roles/{role_id}
+
     **Note:** This endpoint does not require authentication.
     """
     from sqlmodel import select
 
+    from app.core.exceptions import InvalidTokenException
+    from app.invitations.service import InvitationService
+
     service = UserService(db)
+
+    # If invitation token provided, validate it
+    if invitation_token:
+        invitation_service = InvitationService(db)
+
+        # Get email from invitation
+        invitation_email = await invitation_service.get_invitation_email(
+            invitation_token
+        )
+
+        # Verify email matches
+        if invitation_email != data.email:
+            raise InvalidTokenException(
+                'Email does not match the invitation. Please use the email address that received the invitation.'
+            )
 
     # Create user
     user = await service.create_user(data, created_by=None)
@@ -345,6 +427,11 @@ async def register_user(
         user.roles = [user_role]
         await db.commit()
         await db.refresh(user)
+
+    # If invitation token was used, invalidate it
+    if invitation_token:
+        invitation_service = InvitationService(db)
+        await invitation_service.invalidate_invitation(invitation_token)
 
     return UserPublic.model_validate(user)
 
@@ -422,7 +509,7 @@ async def get_current_user_permissions(
     ```
     """
     service = UserService(db)
-    return await service.get_user_permissions(current_user.id)
+    return await service.get_user_permissions(current_user.id)  # type: ignore
 
 
 @users_router.get(
@@ -727,7 +814,9 @@ async def list_roles(
     """
     service = RoleService(db)
 
-    items = await service.list_roles(active_only=active_only, limit=limit, offset=offset)
+    items = await service.list_roles(
+        active_only=active_only, limit=limit, offset=offset
+    )
     total = await service.count_roles(active_only=active_only)
 
     return PaginatedResponse(
@@ -736,7 +825,7 @@ async def list_roles(
         limit=limit,
         offset=offset,
         has_more=(offset + len(items)) < total,
-    )
+    )  # type: ignore
 
 
 @roles_router.post(
@@ -871,7 +960,7 @@ async def list_permissions(
         limit=limit,
         offset=offset,
         has_more=(offset + len(items)) < total,
-    )
+    )  # type: ignore
 
 
 @permissions_router.post(

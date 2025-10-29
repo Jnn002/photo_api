@@ -1,0 +1,81 @@
+# Celery Worker Docker Compose
+# Independent compose file for Celery services (worker and optional Flower monitoring)
+# Uses the existing app_network from main docker-compose.yaml
+
+services:
+  celery_worker:
+    build:
+      context: ../..
+      dockerfile: docker/celery/Dockerfile
+    container_name: celery_worker
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      # Override with container names for internal Docker networking
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      REDIS_URL: ${REDIS_URL}
+      # Email settings
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_SERVER: ${MAIL_SERVER}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME}
+      # App settings
+      FRONTEND_URL: ${FRONTEND_URL}
+      INVITATION_EXPIRY_DAYS: ${INVITATION_EXPIRY_DAYS}
+    depends_on:
+      - redis
+    networks:
+      - app_network
+    volumes:
+      # Hot reload for development (optional - remove in production)
+      - ../../app:/app/app
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.tasks.celery_app inspect ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Optional: Flower - Celery monitoring web UI
+  flower:
+    build:
+      context: ../..
+      dockerfile: docker/celery/Dockerfile
+    container_name: flower
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app flower --port=5555
+    env_file:
+      - ../../.env
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+    ports:
+      - "5555:5555"
+    depends_on:
+      - celery_worker
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5555/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# Use external network created by main docker-compose.yaml
+# The network name format is: <project_directory_name>_<network_name>
+networks:
+  app_network:
+    external: true
+    name: photography-studio-api_app_network
+
+# Reference to external services (not defined here)
+# These services must be running from the main docker-compose.yaml
+services:
+  redis:
+    external: true
+    container_name: redis_cache
