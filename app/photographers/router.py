@@ -42,14 +42,17 @@ photographers_router = APIRouter(prefix='/photographers', tags=['photographers']
     response_model=list[SessionPhotographerListItem],
     status_code=status.HTTP_200_OK,
     summary='List my assigned sessions',
-    description='Get list of sessions assigned to the current photographer. Requires session.view.own permission.',
+    description='Get list of sessions assigned to the current photographer with status ASSIGNED. Requires session.view.own permission.',
 )
 async def list_my_sessions(
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.view.own'))],
     status_filter: Annotated[
         SessionStatus | None,
-        Query(description='Filter by session status', alias='status'),
+        Query(
+            description='Filter by session status (ignored - only ASSIGNED sessions are shown)',
+            alias='status',
+        ),
     ] = None,
     start_date: Annotated[
         date | None, Query(description='Filter by start date (inclusive)')
@@ -65,8 +68,11 @@ async def list_my_sessions(
     """
     Get list of sessions assigned to the current photographer.
 
+    **Important:** Only sessions with status ASSIGNED are visible to photographers.
+    Once a session moves to a different status, it will no longer appear in this list.
+
     **Query parameters:**
-    - status: Filter by session status (e.g., ASSIGNED, ATTENDED)
+    - status: Filter by session status (ignored - only ASSIGNED sessions are returned)
     - start_date: Filter from this date (inclusive)
     - end_date: Filter until this date (inclusive)
     - limit: Maximum results (1-100, default: 50)
@@ -77,7 +83,7 @@ async def list_my_sessions(
     - Session ID, date, time, location
     - Client name
     - Your role and attendance status
-    - Session status
+    - Session status (always ASSIGNED)
 
     **Permissions required:** session.view.own
     """
@@ -97,7 +103,7 @@ async def list_my_sessions(
     response_model=SessionPhotographerView,
     status_code=status.HTTP_200_OK,
     summary='Get session details',
-    description='Get detailed information about an assigned session. Requires session.view.own permission.',
+    description='Get detailed information about an assigned session with status ASSIGNED. Requires session.view.own permission.',
 )
 async def get_session_detail(
     db: SessionDep,
@@ -106,6 +112,9 @@ async def get_session_detail(
 ) -> SessionPhotographerView:
     """
     Get detailed information about a session assigned to you.
+
+    **Important:** Only sessions with status ASSIGNED are accessible.
+    Once a session moves to a different status, you will no longer be able to view it.
 
     **Returns:**
     - Complete session information (date, time, location, type)
@@ -116,14 +125,14 @@ async def get_session_detail(
     - Delivery information for context
 
     **Access control:**
-    You can only view sessions where you are assigned as a photographer.
-    Attempting to access unassigned sessions will result in 403 Forbidden.
+    You can only view sessions where you are assigned as a photographer
+    AND the session status is ASSIGNED.
 
     **Permissions required:** session.view.own
 
     **Errors:**
     - 404: Session not found
-    - 403: Not assigned to this session
+    - 403: Not assigned to this session OR session status is not ASSIGNED
     """
     service = PhotographerService(db)
     return await service.get_session_detail(
@@ -137,7 +146,7 @@ async def get_session_detail(
     response_model=ClientBasicInfo,
     status_code=status.HTTP_200_OK,
     summary='Get client contact information',
-    description='Get basic client information for coordination. Requires session.view.own permission.',
+    description='Get basic client information for coordination. Only for ASSIGNED sessions. Requires session.view.own permission.',
 )
 async def get_client_info(
     db: SessionDep,
@@ -146,6 +155,8 @@ async def get_client_info(
 ) -> ClientBasicInfo:
     """
     Get basic client contact information for a session.
+
+    **Important:** Only accessible for sessions with status ASSIGNED.
 
     **Returns:**
     Limited client data for coordination purposes:
@@ -161,13 +172,14 @@ async def get_client_info(
     - Client type
 
     **Access control:**
-    You can only view client info for sessions where you are assigned as a photographer.
+    You can only view client info for sessions where you are assigned as a photographer
+    AND the session status is ASSIGNED.
 
     **Permissions required:** session.view.own
 
     **Errors:**
     - 404: Session not found
-    - 403: Not assigned to this session
+    - 403: Not assigned to this session OR session status is not ASSIGNED
     """
     service = PhotographerService(db)
     return await service.get_client_info(
@@ -185,9 +197,7 @@ async def get_client_info(
 )
 async def mark_session_attended(
     db: SessionDep,
-    current_user: Annotated[
-        User, Depends(require_permission('session.mark-attended'))
-    ],
+    current_user: Annotated[User, Depends(require_permission('session.mark-attended'))],
     session_id: Annotated[int, Path(description='Session ID', ge=1)],
     data: MarkAttendedRequest,
 ) -> SessionPhotographerView:
@@ -236,7 +246,7 @@ async def mark_session_attended(
     response_model=SessionTeamInfo,
     status_code=status.HTTP_200_OK,
     summary='Get session team',
-    description='Get list of photographers assigned to a session. Requires session.view.own permission.',
+    description='Get list of photographers assigned to a session. Only for ASSIGNED sessions. Requires session.view.own permission.',
 )
 async def get_session_team(
     db: SessionDep,
@@ -245,6 +255,8 @@ async def get_session_team(
 ) -> SessionTeamInfo:
     """
     Get list of all photographers assigned to a session.
+
+    **Important:** Only accessible for sessions with status ASSIGNED.
 
     Useful for multi-photographer sessions where team coordination is needed.
 
@@ -262,13 +274,14 @@ async def get_session_team(
     - Check if other photographers have already marked attended
 
     **Access control:**
-    You can only view team info for sessions where you are assigned as a photographer.
+    You can only view team info for sessions where you are assigned as a photographer
+    AND the session status is ASSIGNED.
 
     **Permissions required:** session.view.own
 
     **Errors:**
     - 404: Session not found
-    - 403: Not assigned to this session
+    - 403: Not assigned to this session OR session status is not ASSIGNED
     """
     service = PhotographerService(db)
     return await service.get_session_team(

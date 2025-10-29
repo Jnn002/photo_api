@@ -11,8 +11,7 @@ All operations enforce ownership validation to ensure photographers
 can only access sessions assigned to them.
 """
 
-from datetime import date, datetime, timedelta
-from decimal import Decimal
+from datetime import date, timedelta
 
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
@@ -22,8 +21,8 @@ from app.clients.repository import ClientRepository
 from app.core.enums import SessionStatus
 from app.core.exceptions import (
     InvalidSessionStateException,
-    InvalidStatusTransitionException,
     PhotographerNotAssignedException,
+    SessionNotAccessibleToPhotographerException,
     SessionNotFoundException,
 )
 from app.core.time_utils import get_current_utc_time
@@ -115,9 +114,12 @@ class PhotographerService:
         """
         Get list of sessions assigned to a photographer.
 
+        Note: Photographers can only view sessions with status ASSIGNED.
+        Sessions with other statuses are not accessible to photographers.
+
         Args:
             photographer_id: ID of the photographer
-            status: Optional filter by session status
+            status: Optional filter by session status (ignored - always filters by ASSIGNED)
             start_date: Optional filter from this date (inclusive)
             end_date: Optional filter until this date (inclusive)
             limit: Maximum number of results
@@ -131,19 +133,24 @@ class PhotographerService:
             select(SessionModel, SessionPhotographer)
             .join(SessionPhotographer)
             .where(SessionPhotographer.photographer_id == photographer_id)
+            .where(
+                SessionModel.status == SessionStatus.ASSIGNED
+            )  # Only ASSIGNED sessions
             .options(selectinload(SessionModel.client))  # type: ignore
         )
 
-        if status:
-            statement = statement.where(SessionModel.status == status)
-
+        # Apply date filters if provided
         if start_date:
             statement = statement.where(SessionModel.session_date >= start_date)
 
         if end_date:
             statement = statement.where(SessionModel.session_date <= end_date)
 
-        statement = statement.order_by(SessionModel.session_date.desc()).offset(offset).limit(limit)  # type: ignore
+        statement = (
+            statement.order_by(SessionModel.session_date.desc())
+            .offset(offset)
+            .limit(limit)
+        )  # type: ignore
 
         result = await self.db.exec(statement)
         rows = result.all()
@@ -177,8 +184,8 @@ class PhotographerService:
         """
         Get detailed session information for a photographer.
 
-        Validates that the photographer is assigned to the session before
-        returning the information.
+        Validates that the photographer is assigned to the session and that
+        the session is in ASSIGNED status before returning the information.
 
         Args:
             session_id: ID of the session
@@ -190,6 +197,7 @@ class PhotographerService:
         Raises:
             SessionNotFoundException: If session doesn't exist
             PhotographerNotAssignedException: If photographer is not assigned
+            SessionNotAccessibleToPhotographerException: If session status is not ASSIGNED
         """
         # Verify assignment
         assignment = await self._verify_photographer_assignment(
@@ -201,6 +209,12 @@ class PhotographerService:
 
         if not session:
             raise SessionNotFoundException(session_id)
+
+        # Verify session is in ASSIGNED status
+        if session.status != SessionStatus.ASSIGNED:
+            raise SessionNotAccessibleToPhotographerException(
+                session_id, session.status.value
+            )
 
         # Build client basic info
         client_info = ClientBasicInfo(
@@ -270,6 +284,7 @@ class PhotographerService:
         Raises:
             SessionNotFoundException: If session doesn't exist
             PhotographerNotAssignedException: If photographer is not assigned
+            SessionNotAccessibleToPhotographerException: If session status is not ASSIGNED
         """
         # Verify assignment
         await self._verify_photographer_assignment(session_id, photographer_id)
@@ -285,6 +300,12 @@ class PhotographerService:
 
         if not session:
             raise SessionNotFoundException(session_id)
+
+        # Verify session is in ASSIGNED status
+        if session.status != SessionStatus.ASSIGNED:
+            raise SessionNotAccessibleToPhotographerException(
+                session_id, session.status.value
+            )
 
         return ClientBasicInfo(
             id=session.client.id,  # type: ignore
@@ -406,9 +427,21 @@ class PhotographerService:
         Raises:
             SessionNotFoundException: If session doesn't exist
             PhotographerNotAssignedException: If photographer is not assigned
+            SessionNotAccessibleToPhotographerException: If session status is not ASSIGNED
         """
         # Verify assignment
         await self._verify_photographer_assignment(session_id, photographer_id)
+
+        # Load session to verify status
+        session = await self.session_repo.get_by_id(session_id)
+        if not session:
+            raise SessionNotFoundException(session_id)
+
+        # Verify session is in ASSIGNED status
+        if session.status != SessionStatus.ASSIGNED:
+            raise SessionNotAccessibleToPhotographerException(
+                session_id, session.status.value
+            )
 
         # Get all assignments
         assignments = await self.photographer_repo.list_by_session(session_id)
