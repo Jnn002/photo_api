@@ -46,9 +46,13 @@ class Settings(BaseSettings):
     MAIL_USERNAME: str = ''
     MAIL_PASSWORD: str = ''
     MAIL_SERVER: str = ''
-    MAIL_PORT: int = 587
+    MAIL_PORT: int = 2525
     MAIL_FROM: str = ''
     MAIL_FROM_NAME: str = ''
+    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool = False
+    USE_CREDENTIALS: bool = True
+    VALIDATE_CERTS: bool = True
 
     # Admin Configuration (for system initialization)
     ADMIN_EMAIL: str = ''
@@ -76,6 +80,14 @@ class Settings(BaseSettings):
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100
+
+    # Celery Configuration
+    CELERY_BROKER_URL: str = ''
+    CELERY_RESULT_BACKEND: str = ''
+
+    # Invitations Configuration
+    INVITATION_EXPIRY_DAYS: int = 7
+    FRONTEND_URL: str = 'http://localhost:4200'
 
     # Validators
     @field_validator('JWT_SECRET')
@@ -111,5 +123,10 @@ class Settings(BaseSettings):
         return v
 
 
-# Global settings instance
+# Create settings instance
 settings = Settings()
+
+
+# broker_url = Config.REDIS_URL
+# result_backend = Config.REDIS_URL
+# broker_connection_retry_on_startup = True

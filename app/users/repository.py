@@ -313,6 +313,33 @@ class UserRepository:
         result = await self.db.exec(statement)
         return list(result.all())
 
+    async def list_all_with_roles(self, limit: int = 100, offset: int = 0) -> list[User]:
+        """List all users with roles eagerly loaded."""
+        statement = (
+            select(User)
+            .options(selectinload(User.roles))  # type: ignore
+            .order_by(User.full_name)
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await self.db.exec(statement)
+        return list(result.all())
+
+    async def list_active_with_roles(
+        self, limit: int = 100, offset: int = 0
+    ) -> list[User]:
+        """List active users with roles eagerly loaded."""
+        statement = (
+            select(User)
+            .where(User.status == Status.ACTIVE)
+            .options(selectinload(User.roles))  # type: ignore
+            .order_by(User.full_name)
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await self.db.exec(statement)
+        return list(result.all())
+
     async def list_by_role(
         self, role_name: str, limit: int = 100, offset: int = 0
     ) -> list[User]:

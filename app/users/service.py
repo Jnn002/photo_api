@@ -454,6 +454,26 @@ class UserService:
             return await self.user_repo.list_active(limit=limit, offset=offset)
         return await self.user_repo.list_all(limit=limit, offset=offset)
 
+    async def list_users_with_roles(
+        self, active_only: bool = False, limit: int = 100, offset: int = 0
+    ) -> list[User]:
+        """
+        List users with their roles (pagination enabled).
+
+        Args:
+            active_only: If True, return only active users
+            limit: Maximum number of users to return
+            offset: Number of users to skip
+
+        Returns:
+            List of User objects with roles eagerly loaded
+        """
+        if active_only:
+            return await self.user_repo.list_active_with_roles(
+                limit=limit, offset=offset
+            )
+        return await self.user_repo.list_all_with_roles(limit=limit, offset=offset)
+
     async def list_users_by_role(
         self, role_name: str, limit: int = 100, offset: int = 0
     ) -> list[User]:

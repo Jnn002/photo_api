@@ -14,8 +14,10 @@ from app.clients.router import router as clients_router
 from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.error_handlers import register_all_errors
+from app.core.invitation_redis import close_invitation_redis_connection
 from app.core.redis import close_redis_connection
 from app.dashboard.router import router as dashboard_router
+from app.invitations.router import router as invitations_router
 from app.sessions.router import router as sessions_router
 from app.users.router import router as users_router
 
@@ -45,7 +47,9 @@ async def lifespan(app: FastAPI):
     await close_db()
     print('✅ Database connections closed')
     await close_redis_connection()
-    print('✅ Redis connections closed')
+    print('✅ Redis token blocklist connections closed')
+    await close_invitation_redis_connection()
+    print('✅ Redis invitation connections closed')
 
 
 # Create FastAPI application
@@ -241,3 +245,4 @@ app.include_router(clients_router, prefix='/api/v1')
 app.include_router(catalog_router, prefix='/api/v1')
 app.include_router(sessions_router, prefix='/api/v1')
 app.include_router(dashboard_router, prefix='/api/v1')
+app.include_router(invitations_router, prefix='/api/v1')

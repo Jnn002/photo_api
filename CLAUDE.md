@@ -64,6 +64,46 @@ uvicorn app.main:app --reload
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+### Running Celery Worker (Background Tasks)
+
+**Development (local, without Docker):**
+```bash
+# Activate virtual environment first
+source .venv/bin/activate
+
+# Terminal 1: Run the API
+uvicorn app.main:app --reload
+
+# Terminal 2: Run Celery worker
+celery -A app.tasks.celery_app worker --loglevel=info
+
+# Terminal 3 (optional): Run Flower monitoring UI
+celery -A app.tasks.celery_app flower
+# Access Flower at http://localhost:5555
+```
+
+**Production (with Docker):**
+```bash
+# Start main services (Postgres, Redis)
+docker compose --env-file docker-compose.env up -d
+
+# Start Celery worker in separate container
+cd docker/celery
+docker compose -f docker-compose.celery.yml up -d
+
+# View Celery worker logs
+docker compose -f docker-compose.celery.yml logs -f celery_worker
+
+# View Flower monitoring (if enabled)
+# Access at http://localhost:5555
+
+# Stop Celery services
+docker compose -f docker-compose.celery.yml down
+
+# Restart Celery worker (after code changes)
+docker compose -f docker-compose.celery.yml restart celery_worker
+```
+
 ### Database Operations
 ```bash
 # Activate virtual environment first
@@ -303,8 +343,35 @@ The app uses **Pydantic Settings** to load configuration from environment variab
 - `PAYMENT_DEADLINE_DAYS`: 5 (business rule)
 - `CHANGES_DEADLINE_DAYS`: 7 (business rule)
 - `DEFAULT_DEPOSIT_PERCENTAGE`: 50 (business rule)
+- `CELERY_BROKER_URL`: Celery broker URL (Redis)
+- `CELERY_RESULT_BACKEND`: Celery result backend URL (Redis)
+- `INVITATION_EXPIRY_DAYS`: 7 (invitation token expiration)
+- `FRONTEND_URL`: Frontend base URL for invitation links
 
 Create a `.env` file for application config and use `docker-compose.env` for Docker services.
+
+**Example `.env` for Celery and Invitations:**
+```bash
+# Celery (for development - uses localhost)
+CELERY_BROKER_URL=redis://:pipeline@localhost:6381/0
+CELERY_RESULT_BACKEND=redis://:pipeline@localhost:6381/0
+
+# Celery (for Docker - uses container name)
+# CELERY_BROKER_URL=redis://:pipeline@redis_cache:6379/0
+# CELERY_RESULT_BACKEND=redis://:pipeline@redis_cache:6379/0
+
+# Invitations
+INVITATION_EXPIRY_DAYS=7
+FRONTEND_URL=http://localhost:4200
+
+# Email settings (required for invitations)
+MAIL_USERNAME=your-email@example.com
+MAIL_PASSWORD=your-password
+MAIL_SERVER=smtp.example.com
+MAIL_PORT=587
+MAIL_FROM=noreply@studio.gt
+MAIL_FROM_NAME=Photography Studio
+```
 
 ## System Initialization
 

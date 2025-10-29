@@ -1,0 +1,28 @@
+{{ app_name }} - Invitación al Equipo
+================================================================================
+
+¡Hola!
+
+Has sido invitado(a) a unirte al equipo de {{ app_name }}, nuestro sistema de
+gestión para estudios fotográficos.
+
+{% if custom_message %}
+--- Mensaje personalizado ---
+{{ custom_message }}
+-----------------------------
+{% endif %}
+
+Para aceptar esta invitación y crear tu cuenta, visita el siguiente enlace:
+
+{{ invitation_url }}
+
+IMPORTANTE: Esta invitación expirará en {{ expiry_days }} días. Asegúrate de
+aceptarla antes de que venza.
+
+Una vez que completes tu registro, un administrador asignará los roles y
+permisos correspondientes a tu cuenta.
+
+================================================================================
+© 2025 {{ app_name }}. Todos los derechos reservados.
+
+Si no esperabas este correo, puedes ignorarlo de forma segura.

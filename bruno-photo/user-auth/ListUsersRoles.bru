@@ -1,0 +1,56 @@
+meta {
+  name: List Users with Roles
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{back}}/users/with-roles?active_only=false&limit=50&offset=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  active_only: false
+  limit: 50
+  offset: 0
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("should return paginated users with roles", function() {
+    const data = res.getBody();
+    expect(data).to.be.an('object');
+    expect(data).to.have.property('items');
+    expect(data.items).to.be.an('array');
+    expect(data).to.have.property('total');
+    expect(data).to.have.property('limit');
+    expect(data).to.have.property('offset');
+    expect(data).to.have.property('has_more');
+  
+    if (data.items.length > 0) {
+      const user = data.items[0];
+      expect(user).to.have.property('id');
+      expect(user).to.have.property('full_name');
+      expect(user).to.have.property('email');
+      expect(user).to.have.property('status');
+      expect(user).to.have.property('roles');
+      expect(user.roles).to.be.an('array');
+  
+      if (user.roles.length > 0) {
+        const role = user.roles[0];
+        expect(role).to.have.property('id');
+        expect(role).to.have.property('name');
+        expect(role).to.have.property('description');
+        expect(role).to.have.property('status');
+      }
+    }
+  });
+}

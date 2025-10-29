@@ -1,0 +1,44 @@
+meta {
+  name: Validate Invitation - Invalid Token
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{back}}/invitations/validate/invalid-token-12345
+  body: none
+  auth: none
+}
+
+docs {
+  # Validate Invalid Token Test
+
+  Tests validation of a non-existent or expired invitation token.
+
+  **Expected behavior:**
+  - Status code: 200 (validation endpoint always returns 200)
+  - `is_valid`: false
+  - `email`: null
+  - `message`: Error message about invalid/expired token
+
+  **Use case:**
+  Frontend should show error message and NOT display registration form.
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("is_valid is false", function() {
+    expect(res.getBody().is_valid).to.equal(false);
+  });
+
+  test("email is null", function() {
+    expect(res.getBody().email).to.be.null;
+  });
+
+  test("Message indicates invalid token", function() {
+    expect(res.getBody().message).to.include('Invalid');
+  });
+}

@@ -1,0 +1,89 @@
+meta {
+  name: Register with Invitation
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{back}}/auth/register?invitation_token={{invitationToken}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "full_name": "New Team Member",
+    "email": "newuser@studio.com",
+    "password": "SecurePassword123!",
+    "phone": "+502 1234-5678"
+  }
+}
+
+docs {
+  # Register User with Invitation Token
+
+  Public registration endpoint that accepts an optional invitation token.
+
+  **Query parameters:**
+  - `invitation_token`: Optional invitation token (obtained from email link)
+
+  **Request body:**
+  - `full_name`: User's full name (required)
+  - `email`: Email address - MUST match the invitation email (required)
+  - `password`: Strong password (required)
+  - `phone`: Phone number (optional)
+
+  **Registration flow with invitation:**
+  1. User receives invitation email with token
+  2. User clicks link → Frontend validates token via GET /invitations/validate/{token}
+  3. Frontend pre-fills email (readonly) in registration form
+  4. User completes full_name and password
+  5. Frontend submits to this endpoint WITH invitation_token query param
+  6. Backend validates token, creates user, assigns 'user' role, invalidates token
+  7. Admin later assigns specific roles via POST /users/{id}/roles/{role_id}
+
+  **Response:**
+  Returns UserPublic object with default 'user' role assigned.
+
+  **Validations:**
+  - If invitation_token provided:
+    - Token must be valid (exists in Redis, not expired)
+    - Email in request body MUST match email in invitation
+    - After successful registration, token is invalidated
+  - Email must not be already registered
+  - Password must meet strength requirements
+
+  **Example response:**
+  ```json
+  {
+    "id": 5,
+    "full_name": "New Team Member",
+    "email": "newuser@studio.com",
+    "phone": "+502 1234-5678",
+    "status": "ACTIVE",
+    "created_at": "2025-10-24T12:00:00"
+  }
+  ```
+}
+
+tests {
+  test("Status code is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response has user id", function() {
+    expect(res.getBody().id).to.be.a('number');
+  });
+
+  test("User email matches request", function() {
+    expect(res.getBody().email).to.equal('newuser@studio.com');
+  });
+
+  test("User status is ACTIVE", function() {
+    expect(res.getBody().status).to.equal('ACTIVE');
+  });
+
+  test("Response has created_at", function() {
+    expect(res.getBody().created_at).to.be.a('string');
+  });
+}

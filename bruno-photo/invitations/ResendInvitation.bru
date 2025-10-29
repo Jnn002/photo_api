@@ -1,0 +1,76 @@
+meta {
+  name: Resend Invitation
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{back}}/invitations/resend
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+body:json {
+  {
+    "email": "anotheruser@studio.com",
+    "custom_message": "Reenvío de invitación - No te pierdas la oportunidad de unirte al equipo!"
+  }
+}
+
+docs {
+  # Resend Invitation
+
+  Resends an invitation to an email address with a NEW token and fresh expiration.
+
+  **Required permission:** `user:create`
+
+  **Use cases:**
+  - Original invitation expired
+  - User didn't receive the email
+  - Admin wants to send updated custom message
+
+  **Request:**
+  - `email`: Email address to resend invitation to (required)
+  - `custom_message`: New personalized message (optional, replaces previous)
+
+  **Response:**
+  Same as Create Invitation - returns new invitation_url with fresh token
+
+  **Business rules:**
+  - Email must not be already registered
+  - Generates NEW token (old tokens remain valid until TTL expires naturally)
+  - Sends new email asynchronously via Celery
+  - New token has fresh 7-day expiration
+
+  **Example response:**
+  ```json
+  {
+    "invitation_url": "http://localhost:4200/register?invitation=xyz789...",
+    "email": "anotheruser@studio.com",
+    "expires_at": "2025-10-31T15:30:00",
+    "message": "Invitation resent successfully to anotheruser@studio.com"
+  }
+  ```
+}
+
+tests {
+  test("Status code is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response has invitation_url", function() {
+    expect(res.getBody().invitation_url).to.be.a('string');
+  });
+
+  test("Response has email", function() {
+    expect(res.getBody().email).to.equal('anotheruser@studio.com');
+  });
+
+  test("Message indicates resent", function() {
+    expect(res.getBody().message).to.include('resent');
+  });
+}

@@ -1,0 +1,46 @@
+meta {
+  name: Create Invitation - Duplicate Email
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{back}}/invitations
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+body:json {
+  {
+    "email": "admin@studio.com",
+    "custom_message": "This should fail - email already registered"
+  }
+}
+
+docs {
+  # Create Invitation - Duplicate Email Test
+
+  Tests that invitations cannot be created for emails that are already registered.
+
+  **Expected behavior:**
+  - Status code: 400 (Bad Request)
+  - Error message indicating email is already registered
+
+  **Use case:**
+  This prevents inviting users who have already registered in the system.
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+
+  test("Error message mentions duplicate email", function() {
+    const body = res.getBody();
+    expect(body.detail || body.message).to.include('already registered');
+  });
+}
