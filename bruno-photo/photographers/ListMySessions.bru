@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{back}}/photographers/sessions?limit=50&offset=0
+  url: {{back}}/photographers/sessions?limit=50&offset=0&status=Assigned&start_date=2024-01-01
   body: none
   auth: bearer
 }
@@ -13,9 +13,9 @@ get {
 params:query {
   limit: 50
   offset: 0
-  ~status: ASSIGNED
-  ~start_date: 2024-01-01
-  ~end_date: 2024-12-31
+  status: Assigned
+  start_date: 2024-01-01
+  ~end_date: 2025-12-31
 }
 
 auth:bearer {

@@ -22,7 +22,7 @@ from app.core.security import (
     oauth2_scheme,
     verify_refresh_token,
 )
-from app.users.models import Role, User
+from app.users.models import Role, User, UserRole
 from app.users.schemas import (
     LogoutRequest,
     PermissionCreate,
@@ -424,7 +424,11 @@ async def register_user(
     user_role = result.first()
 
     if user_role:
-        user.roles = [user_role]
+        # Create UserRole link directly to avoid lazy-load issues
+        user_role_link = UserRole(
+            user_id=user.id, role_id=user_role.id, assigned_by=None
+        )
+        db.add(user_role_link)
         await db.commit()
         await db.refresh(user)
 
