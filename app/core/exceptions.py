@@ -77,6 +77,35 @@ class InactiveResourceException(StudioException):
     pass
 
 
+class RateLimitExceededException(StudioException):
+    """Rate limit has been exceeded."""
+
+    def __init__(
+        self,
+        limit: int,
+        window_seconds: int,
+        retry_after: int,
+        identifier: str | None = None,
+    ):
+        """
+        Initialize rate limit exception.
+
+        Args:
+            limit: Maximum requests allowed in window
+            window_seconds: Time window in seconds
+            retry_after: Seconds to wait before retry
+            identifier: Optional identifier (user/IP) for logging
+        """
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self.retry_after = retry_after
+        self.identifier = identifier
+        super().__init__(
+            f'Rate limit exceeded. Maximum {limit} requests per {window_seconds} seconds. '
+            f'Retry after {retry_after} seconds.'
+        )
+
+
 # ==================== Resource Not Found Exceptions ====================
 
 

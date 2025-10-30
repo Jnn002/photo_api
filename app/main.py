@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.error_handlers import register_all_errors
 from app.core.invitation_redis import close_invitation_redis_connection
+from app.core.rate_limit_redis import close_rate_limit_redis, init_rate_limit_redis
 from app.core.redis import close_redis_connection
 from app.dashboard.router import router as dashboard_router
 from app.invitations.router import router as invitations_router
@@ -41,6 +42,10 @@ async def lifespan(app: FastAPI):
         await init_db()
         print('✅ Database tables initialized')
 
+    # Initialize rate limiting Redis connection
+    init_rate_limit_redis(settings.REDIS_URL)
+    print('✅ Rate limiting Redis initialized')
+
     yield
 
     # Shutdown
@@ -51,6 +56,8 @@ async def lifespan(app: FastAPI):
     print('✅ Redis token blocklist connections closed')
     await close_invitation_redis_connection()
     print('✅ Redis invitation connections closed')
+    await close_rate_limit_redis()
+    print('✅ Rate limiting Redis connections closed')
 
 
 # Create FastAPI application

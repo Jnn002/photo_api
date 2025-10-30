@@ -11,11 +11,12 @@ This module exposes REST endpoints for:
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Query, status
+from fastapi import APIRouter, Body, Depends, Query, Request, status
 from pydantic import Field
 
 from app.core.dependencies import CurrentActiveUser, SessionDep
 from app.core.permissions import require_permission
+from app.core.rate_limit import require_rate_limit
 from app.core.schemas import PaginatedResponse
 from app.core.security import (
     create_access_token,
@@ -54,8 +55,10 @@ auth_router = APIRouter(prefix='/auth', tags=['authentication'])
     description='Authenticate user with email and password. Returns access token and refresh token.',
 )
 async def login(
+    request: Request,
     credentials: UserLogin,
     db: SessionDep,
+    _: Annotated[None, Depends(require_rate_limit(5, 60, 'ip'))],
 ) -> TokenResponse:
     """
     Authenticate user and return JWT tokens.
@@ -242,8 +245,10 @@ users_router = APIRouter(prefix='/users', tags=['users'])
     description='Get paginated list of users. Requires user.list permission.',
 )
 async def list_users(
+    request: Request,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('user.list'))],
+    _: Annotated[None, Depends(require_rate_limit(200, 60, 'user'))],
     active_only: Annotated[
         bool, Query(description='Filter for active users only')
     ] = False,
@@ -363,8 +368,10 @@ async def create_user(
     description='Register a new user without authentication. User gets basic "user" role. Optionally accepts invitation token.',
 )
 async def register_user(
+    request: Request,
     data: UserCreate,
     db: SessionDep,
+    _: Annotated[None, Depends(require_rate_limit(5, 60, 'ip'))],
     invitation_token: Annotated[
         str | None, Query(description='Optional invitation token')
     ] = None,
