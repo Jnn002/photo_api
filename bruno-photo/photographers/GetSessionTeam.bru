@@ -1,0 +1,42 @@
+meta {
+  name: Get Session Team
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{back}}/photographers/sessions/12/team
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Get list of all photographers assigned to a session.
+  
+  **Returns:**
+  - Session ID
+  - List of photographer assignments:
+    - Photographer name
+    - Role (Lead, Assistant, etc.)
+    - Assignment date
+    - Attendance status
+  
+  **Use cases:**
+  - Coordinate with other photographers
+  - Check who else is assigned
+  - See attendance status of team members
+  
+  **Requirements:**
+  - Must be logged in as photographer
+  - Requires session.view.own permission
+  - Must be assigned to this session
+}

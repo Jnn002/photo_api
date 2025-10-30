@@ -1,0 +1,39 @@
+meta {
+  name: Get Session Detail
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{back}}/photographers/sessions/12
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Get detailed information about a session assigned to you.
+  
+  **Returns:**
+  - Complete session information
+  - Limited client information (name, email, primary phone only)
+  - Session requirements
+  - List of items/packages (without prices)
+  - Your assignment details
+  
+  **Access control:**
+  You can only view sessions where you are assigned as a photographer.
+  
+  **Requirements:**
+  - Must be logged in as photographer
+  - Requires session.view.own permission
+  - Must be assigned to this session
+}

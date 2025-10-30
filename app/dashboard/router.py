@@ -17,6 +17,7 @@ from app.users.models import User
 router = APIRouter(prefix='/dashboard', tags=['dashboard'])
 
 
+# session.view.all
 @router.get(
     '/stats',
     response_model=DashboardStats,
@@ -26,7 +27,7 @@ router = APIRouter(prefix='/dashboard', tags=['dashboard'])
 )
 async def get_dashboard_stats(
     db: SessionDep,
-    current_user: Annotated[User, Depends(require_permission('session.view.all'))],
+    current_user: Annotated[User, Depends(require_permission('dashboard.view'))],
     year: Annotated[
         int | None, Query(description='Year to filter (default: current year)')
     ] = None,

@@ -1,0 +1,41 @@
+meta {
+  name: Get Client Info
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{back}}/photographers/sessions/12/client
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Get basic client contact information for a session.
+  
+  **Returns:**
+  Limited client data:
+  - Full name
+  - Email
+  - Primary phone
+  
+  **Does NOT return:**
+  - Secondary phone
+  - Delivery address
+  - Internal notes
+  - Client type
+  
+  **Requirements:**
+  - Must be logged in as photographer
+  - Requires session.view.own permission
+  - Must be assigned to this session
+}

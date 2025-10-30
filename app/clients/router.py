@@ -9,7 +9,7 @@ This module exposes REST endpoints for:
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import Field
 
 from app.clients.models import Client
@@ -18,6 +18,7 @@ from app.clients.service import ClientService
 from app.core.dependencies import SessionDep
 from app.core.enums import ClientType
 from app.core.permissions import require_permission
+from app.core.rate_limit import require_rate_limit
 from app.core.schemas import PaginatedResponse
 from app.users.models import User
 
@@ -66,8 +67,10 @@ async def create_client(
     description='Get paginated list of clients with optional filters. Requires client.view permission.',
 )
 async def list_clients(
+    request: Request,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('client.view'))],
+    _: Annotated[None, Depends(require_rate_limit(200, 60, 'user'))],
     active_only: Annotated[
         bool, Query(description='Filter for active clients only')
     ] = False,

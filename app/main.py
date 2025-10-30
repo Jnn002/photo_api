@@ -15,9 +15,12 @@ from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.error_handlers import register_all_errors
 from app.core.invitation_redis import close_invitation_redis_connection
+from app.core.middleware import SecurityHeadersMiddleware
+from app.core.rate_limit_redis import close_rate_limit_redis, init_rate_limit_redis
 from app.core.redis import close_redis_connection
 from app.dashboard.router import router as dashboard_router
 from app.invitations.router import router as invitations_router
+from app.photographers.router import photographers_router
 from app.sessions.router import router as sessions_router
 from app.users.router import router as users_router
 
@@ -40,6 +43,10 @@ async def lifespan(app: FastAPI):
         await init_db()
         print('✅ Database tables initialized')
 
+    # Initialize rate limiting Redis connection
+    init_rate_limit_redis(settings.REDIS_URL)
+    print('✅ Rate limiting Redis initialized')
+
     yield
 
     # Shutdown
@@ -50,6 +57,8 @@ async def lifespan(app: FastAPI):
     print('✅ Redis token blocklist connections closed')
     await close_invitation_redis_connection()
     print('✅ Redis invitation connections closed')
+    await close_rate_limit_redis()
+    print('✅ Rate limiting Redis connections closed')
 
 
 # Create FastAPI application
@@ -74,6 +83,10 @@ app.add_middleware(
     expose_headers=settings.CORS_EXPOSE_HEADERS,
     # expose_headers=settings.CORS_EXPOSE_HEADERS,
 )
+
+# Add Security Headers Middleware
+# Protects against common web vulnerabilities (XSS, clickjacking, etc.)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Register all exception handlers
 register_all_errors(app)
@@ -244,5 +257,6 @@ app.include_router(users_router, prefix='/api/v1')
 app.include_router(clients_router, prefix='/api/v1')
 app.include_router(catalog_router, prefix='/api/v1')
 app.include_router(sessions_router, prefix='/api/v1')
+app.include_router(photographers_router, prefix='/api/v1')
 app.include_router(dashboard_router, prefix='/api/v1')
 app.include_router(invitations_router, prefix='/api/v1')

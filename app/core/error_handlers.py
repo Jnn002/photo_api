@@ -25,17 +25,19 @@ from .exceptions import (
     InactiveUserException,
     InsufficientBalanceException,
     InsufficientPermissionsException,
-    InvalidPasswordFormatException,
     InvalidCredentialsException,
+    InvalidPasswordFormatException,
     InvalidSessionTypeException,
     InvalidStatusTransitionException,
     InvalidTokenException,
     PackageItemsEmptyException,
     PaymentDeadlineExpiredException,
     PhotographerNotAvailableException,
+    RateLimitExceededException,
     ResourceConflictException,
     ResourceNotFoundException,
     RoomNotAvailableException,
+    SessionNotAccessibleToPhotographerException,
     SessionNotEditableException,
     StudioException,
     TokenExpiredException,
@@ -172,6 +174,32 @@ def register_all_errors(app: FastAPI) -> None:
             message='Resource is inactive or unavailable',
         ),
     )
+
+    # ==================== Rate Limiting ====================
+
+    @app.exception_handler(RateLimitExceededException)
+    async def rate_limit_exceeded_handler(
+        request: Request, exc: RateLimitExceededException
+    ):
+        """
+        Handle rate limit exceeded exceptions with retry information.
+
+        Returns 429 status with Retry-After header and detailed information
+        about the rate limit for client handling.
+        """
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={'Retry-After': str(exc.retry_after)},
+            content={
+                'message': str(exc),
+                'error_code': 'rate_limit_exceeded',
+                'detail': {
+                    'limit': exc.limit,
+                    'window_seconds': exc.window_seconds,
+                    'retry_after': exc.retry_after,
+                },
+            },
+        )
 
     # ==================== Resource Not Found ====================
 
@@ -407,6 +435,22 @@ def register_all_errors(app: FastAPI) -> None:
                 'message': str(exc),
                 'error_code': 'business_validation_error',
                 'detail': {},
+            },
+        )
+
+    @app.exception_handler(SessionNotAccessibleToPhotographerException)
+    async def session_not_accessible_to_photographer_handler(
+        request: Request, exc: SessionNotAccessibleToPhotographerException
+    ):
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                'message': str(exc),
+                'error_code': 'session_not_accessible',
+                'detail': {
+                    'session_id': exc.session_id,
+                    'current_status': exc.current_status,
+                },
             },
         )
 

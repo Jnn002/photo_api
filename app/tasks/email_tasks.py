@@ -74,21 +74,11 @@ def send_invitation_email(
             expiry_days=settings.INVITATION_EXPIRY_DAYS,
         )
 
-        # Render text template
-        text_template = jinja_env.get_template('invitation_email.txt')
-        text_body = text_template.render(
-            invitation_url=invitation_url,
-            custom_message=custom_message,
-            app_name=settings.APP_NAME,
-            expiry_days=settings.INVITATION_EXPIRY_DAYS,
-        )
-
         # Create message
         message = MessageSchema(
             subject='Invitación al Sistema de Gestión Fotográfica',
             recipients=[recipient_email],
-            body=text_body,
-            html=html_body,
+            body=html_body,
             subtype=MessageType.html,
         )
 

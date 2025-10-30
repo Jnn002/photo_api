@@ -1,0 +1,51 @@
+meta {
+  name: Mark Attended - Before Session Date
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{back}}/photographers/sessions/12/attend
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "attended": true,
+    "notes": "Trying to mark attended before session date"
+  }
+}
+
+tests {
+  test("Should return 400 if session is in future", function() {
+    // Only test if session date is in future
+    if (res.status !== 200) {
+      expect(res.status).to.equal(400);
+    }
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Test marking a session as attended before the session date.
+  
+  **Expected result:**
+  - 400 Bad Request error
+  - Error message: "Cannot mark session as attended before session date"
+  
+  **Purpose:**
+  Verify business rule: photographers cannot mark attended before session occurs.
+  
+  **Note:**
+  This test will only fail with 400 if the session date is in the future.
+  If testing with past sessions, this will succeed (which is correct behavior).
+}

@@ -1,0 +1,37 @@
+meta {
+  name: Get Session Detail - Not Assigned
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{back}}/photographers/sessions/999
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("Should return 403 Forbidden", function() {
+    expect(res.status).to.equal(403);
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Test accessing a session that is not assigned to the photographer.
+  
+  **Expected result:**
+  - 403 Forbidden error
+  - Error message: "Photographer X is not assigned to session 999"
+  
+  **Purpose:**
+  Verify that photographers cannot access sessions they are not assigned to.
+}

@@ -11,12 +11,13 @@ This module exposes REST endpoints for:
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import Field
 
 from app.core.dependencies import SessionDep
 from app.core.enums import SessionStatus
 from app.core.permissions import require_permission
+from app.core.rate_limit import require_rate_limit
 from app.core.schemas import PaginatedResponse
 from app.sessions.models import (
     Session as SessionModel,
@@ -105,8 +106,10 @@ async def create_session(
     description='Get paginated list of sessions with optional filters. Requires session.view.all permission.',
 )
 async def list_sessions(
+    request: Request,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('session.view.all'))],
+    _: Annotated[None, Depends(require_rate_limit(200, 60, 'user'))],
     client_id: Annotated[int | None, Query(description='Filter by client ID')] = None,
     status_filter: Annotated[
         SessionStatus | None,

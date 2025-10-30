@@ -9,7 +9,7 @@ This module exposes REST endpoints for:
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import Field
 
 from app.catalog.models import Item, Package, Room
@@ -31,6 +31,7 @@ from app.catalog.service import ItemService, PackageService, RoomService
 from app.core.dependencies import SessionDep
 from app.core.enums import ItemType, SessionType
 from app.core.permissions import require_permission
+from app.core.rate_limit import require_rate_limit
 from app.core.schemas import PaginatedResponse
 from app.users.models import User
 
@@ -79,8 +80,10 @@ async def create_item(
     description='Get paginated list of items with optional filters. Requires item.view permission.',
 )
 async def list_items(
+    request: Request,
     db: SessionDep,
     current_user: Annotated[User, Depends(require_permission('item.view'))],
+    _: Annotated[None, Depends(require_rate_limit(200, 60, 'user'))],
     active_only: Annotated[
         bool, Query(description='Filter for active items only')
     ] = False,

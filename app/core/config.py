@@ -89,6 +89,28 @@ class Settings(BaseSettings):
     INVITATION_EXPIRY_DAYS: int = 7
     FRONTEND_URL: str = 'http://localhost:4200'
 
+    # Rate Limiting Configuration
+    # Default limits for general endpoints
+    DEFAULT_RATE_LIMIT: int = 100  # requests
+    DEFAULT_RATE_WINDOW_SECONDS: int = 60  # per 60 seconds (1 minute)
+
+    # Strict limits for authentication endpoints (prevent brute force)
+    AUTH_RATE_LIMIT: int = 5  # requests
+    AUTH_RATE_WINDOW_SECONDS: int = 60  # per 60 seconds
+
+    # Generous limits for read operations
+    READ_RATE_LIMIT: int = 200  # requests
+    READ_RATE_WINDOW_SECONDS: int = 60  # per 60 seconds
+
+    # Cookie Security Configuration
+    # For local development (HTTP), set SECURE_COOKIES=False
+    # For production (HTTPS), set SECURE_COOKIES=True
+    SECURE_COOKIES: bool = False  # Requires HTTPS if True
+    COOKIE_SAMESITE: str = 'lax'  # 'strict', 'lax', or 'none'
+    COOKIE_DOMAIN: str = (
+        ''  # Empty for localhost, '.yourdomain.com' for subdomain sharing
+    )
+
     # Validators
     @field_validator('JWT_SECRET')
     @classmethod

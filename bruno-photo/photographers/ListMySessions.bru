@@ -1,0 +1,43 @@
+meta {
+  name: List My Sessions
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{back}}/photographers/sessions?limit=50&offset=0&status=Assigned&start_date=2024-01-01
+  body: none
+  auth: bearer
+}
+
+params:query {
+  limit: 50
+  offset: 0
+  status: Assigned
+  start_date: 2024-01-01
+  ~end_date: 2025-12-31
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Get list of sessions assigned to the current photographer.
+  
+  **Query parameters:**
+  - status: Filter by session status (optional)
+  - start_date: Filter from this date (optional)
+  - end_date: Filter until this date (optional)
+  - limit: Maximum results (default: 50)
+  - offset: Pagination offset (default: 0)
+  
+  **Requirements:**
+  - Must be logged in as photographer
+  - Requires session.view.own permission
+}

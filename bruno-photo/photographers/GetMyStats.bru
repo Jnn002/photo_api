@@ -1,0 +1,42 @@
+meta {
+  name: Get My Statistics
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{back}}/photographers/stats
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Get statistics and metrics for the current photographer.
+  
+  **Returns:**
+  - total_assignments: Total sessions assigned (all time)
+  - upcoming_sessions: Sessions with future dates
+  - attended_sessions: Sessions marked as attended
+  - pending_sessions: Assigned but not attended (date passed)
+  - next_session_date: Date of next scheduled session
+  - sessions_this_week: Sessions in the next 7 days
+  - total_sessions_completed: Attended and completed sessions
+  
+  **Use cases:**
+  - Dashboard overview
+  - Track workload
+  - Monitor completion rate
+  
+  **Requirements:**
+  - Must be logged in as photographer
+  - Requires session.view.own permission
+}
