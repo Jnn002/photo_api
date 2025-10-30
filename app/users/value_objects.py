@@ -21,8 +21,8 @@ class Password(str):
     according to security requirements. It inherits from str to work seamlessly
     with Pydantic and FastAPI.
 
-    Requirements:
-    - At least 8 characters long
+    Requirements (aligned with frontend validation):
+    - At least 10 characters long (enhanced from 8 for better security)
     - At least one lowercase letter
     - At least one uppercase letter
     - At least one digit
@@ -78,10 +78,10 @@ class Password(str):
         if not isinstance(value, str):
             raise InvalidPasswordFormatException('Password must be a string')
 
-        # 1. Length validation
-        if len(value) < 8:
+        # 1. Length validation (enhanced to 10 characters for better security)
+        if len(value) < 10:
             raise InvalidPasswordFormatException(
-                'Password must be at least 8 characters long'
+                'Password must be at least 10 characters long'
             )
 
         # 2. Lowercase letter validation

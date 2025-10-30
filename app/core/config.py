@@ -102,6 +102,15 @@ class Settings(BaseSettings):
     READ_RATE_LIMIT: int = 200  # requests
     READ_RATE_WINDOW_SECONDS: int = 60  # per 60 seconds
 
+    # Cookie Security Configuration
+    # For local development (HTTP), set SECURE_COOKIES=False
+    # For production (HTTPS), set SECURE_COOKIES=True
+    SECURE_COOKIES: bool = False  # Requires HTTPS if True
+    COOKIE_SAMESITE: str = 'lax'  # 'strict', 'lax', or 'none'
+    COOKIE_DOMAIN: str = (
+        ''  # Empty for localhost, '.yourdomain.com' for subdomain sharing
+    )
+
     # Validators
     @field_validator('JWT_SECRET')
     @classmethod

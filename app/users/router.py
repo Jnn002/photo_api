@@ -11,9 +11,11 @@ This module exposes REST endpoints for:
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Query, Request, status
+from fastapi import APIRouter, Body, Depends, Query, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import Field
 
+from app.core.config import settings
 from app.core.dependencies import CurrentActiveUser, SessionDep
 from app.core.permissions import require_permission
 from app.core.rate_limit import require_rate_limit
@@ -32,7 +34,7 @@ from app.users.schemas import (
     RolePublic,
     RoleUpdate,
     RoleWithPermissions,
-    TokenResponse,
+    TokenResponseWithCookie,
     UserCreate,
     UserLogin,
     UserPasswordUpdate,
@@ -49,64 +51,104 @@ auth_router = APIRouter(prefix='/auth', tags=['authentication'])
 
 @auth_router.post(
     '/login',
-    response_model=TokenResponse,
+    response_model=TokenResponseWithCookie,
     status_code=status.HTTP_200_OK,
     summary='User login',
-    description='Authenticate user with email and password. Returns access token and refresh token.',
+    description='Authenticate user with email and password. Returns access token in body and refresh token in HttpOnly cookie.',
 )
 async def login(
     request: Request,
     credentials: UserLogin,
     db: SessionDep,
     _: Annotated[None, Depends(require_rate_limit(5, 60, 'ip'))],
-) -> TokenResponse:
+) -> Response:
     """
     Authenticate user and return JWT tokens.
 
-    Returns both access token (30 min) and refresh token (30 days).
+    Returns access token (30 min) in response body and refresh token (7 days) in HttpOnly cookie.
 
     **Required fields:**
     - email: User email address
     - password: User password
 
     **Returns:**
-    - access_token: JWT access token for API requests
-    - refresh_token: JWT refresh token for obtaining new access tokens
+    - access_token: JWT access token for API requests (in response body)
     - token_type: Always 'bearer'
     - expires_in: Access token expiration time in seconds
     - user: Public user information
+
+    **Security:**
+    - Refresh token is set as HttpOnly cookie (not accessible via JavaScript)
+    - Cookie has SameSite protection to prevent CSRF
+    - Secure flag enabled in production (HTTPS only)
     """
     service = UserService(db)
-    return await service.authenticate_user(credentials)
+    token_data = await service.authenticate_user(credentials)
+
+    # Create response without refresh_token in body
+    response_content = {
+        'access_token': token_data.access_token,
+        'token_type': 'bearer',
+        'expires_in': token_data.expires_in,
+        'user': token_data.user.model_dump(mode='json'),
+    }
+
+    response = JSONResponse(content=response_content)
+
+    # Set refresh token as httpOnly cookie
+    response.set_cookie(
+        key='refresh_token',
+        value=token_data.refresh_token,
+        httponly=True,  # JavaScript cannot access
+        secure=settings.SECURE_COOKIES,  # HTTPS only (if enabled)
+        samesite=settings.COOKIE_SAMESITE,  # CSRF protection
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,  # 7 days
+        path='/api/v1/auth',  # Limit cookie scope to auth endpoints
+        domain=settings.COOKIE_DOMAIN or None,  # Domain for subdomain sharing
+    )
+
+    return response
 
 
 @auth_router.post(
     '/refresh',
-    response_model=TokenResponse,
+    response_model=TokenResponseWithCookie,
     status_code=status.HTTP_200_OK,
     summary='Refresh access token',
-    description='Exchange a valid refresh token for a new access token and refresh token.',
+    description='Exchange a valid refresh token for a new access token. Accepts refresh token from HttpOnly cookie or request body (dual support).',
 )
 async def refresh_token(
-    refresh_token: Annotated[str, Body(..., embed=True)],
+    request: Request,
     db: SessionDep,
-) -> TokenResponse:
+    refresh_token_body: Annotated[str | None, Body(embed=True)] = None,
+) -> Response:
     """
     Refresh access token using a valid refresh token.
 
     When the access token expires, use this endpoint with your refresh token
     to obtain a new access token without requiring re-authentication.
 
-    **Required:**
-    - refresh_token: Valid JWT refresh token
+    **Dual Support (backwards compatible):**
+    - Accepts refresh token from HttpOnly cookie (preferred, more secure)
+    - Also accepts refresh token from request body (for backwards compatibility)
+    - Cookie takes precedence if both are provided
+
+    **Request body (optional for backwards compatibility):**
+    ```json
+    {
+        "refresh_token": "eyJ..."
+    }
+    ```
 
     **Returns:**
-    - New access_token and refresh_token pair
+    - New access_token in response body
+    - New refresh_token in HttpOnly cookie
     - Updated user information
 
     **Security:**
     - Validates that the refresh token is not in the blocklist (not revoked)
     - Checks that the user is still active
+    - Refresh token is rotated (new one issued, old one becomes invalid)
     """
     from app.core.enums import Status
     from app.core.exceptions import (
@@ -116,6 +158,14 @@ async def refresh_token(
     )
     from app.core.redis import token_in_blocklist
     from app.core.security import create_refresh_token
+
+    # DUAL SUPPORT: Try cookie first, fallback to body
+    refresh_token = request.cookies.get('refresh_token') or refresh_token_body
+
+    if not refresh_token:
+        raise InvalidTokenException(
+            'Refresh token missing. Provide it via HttpOnly cookie or request body.'
+        )
 
     # Verify the refresh token
     payload = verify_refresh_token(refresh_token)
@@ -145,54 +195,75 @@ async def refresh_token(
     new_access_token = create_access_token(data={'sub': user.email})
     new_refresh_token = create_refresh_token(data={'sub': user.email})
 
-    return TokenResponse(
-        access_token=new_access_token,
-        refresh_token=new_refresh_token,
-        expires_in=30 * 60,  # 30 minutes
-        user=UserPublic.model_validate(user),
+    # Create response without refresh_token in body
+    response_content = {
+        'access_token': new_access_token,
+        'token_type': 'bearer',
+        'expires_in': 30 * 60,  # 30 minutes
+        'user': UserPublic.model_validate(user).model_dump(mode='json'),
+    }
+
+    response = JSONResponse(content=response_content)
+
+    # Set new refresh token as httpOnly cookie (token rotation)
+    response.set_cookie(
+        key='refresh_token',
+        value=new_refresh_token,
+        httponly=True,
+        secure=settings.SECURE_COOKIES,
+        samesite=settings.COOKIE_SAMESITE,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path='/api/v1/auth',
+        domain=settings.COOKIE_DOMAIN or None,
     )
+
+    return response
 
 
 @auth_router.post(
     '/logout',
     status_code=status.HTTP_204_NO_CONTENT,
     summary='User logout',
-    description='Logout current user by revoking both access and refresh tokens.',
+    description='Logout current user by revoking both access and refresh tokens. Clears HttpOnly cookie.',
 )
 async def logout(
+    request: Request,
     logout_data: LogoutRequest,
     current_user: CurrentActiveUser,
     token: Annotated[str, Depends(oauth2_scheme)],
-) -> None:
+) -> Response:
     """
     Logout current user by invalidating both access and refresh tokens.
 
     This endpoint adds both the access token (from Authorization header) and
-    the refresh token (from request body) to Redis blocklist. Once added,
-    these tokens cannot be used for authentication or token refresh.
+    the refresh token (from HttpOnly cookie or request body) to Redis blocklist.
+    Once added, these tokens cannot be used for authentication or token refresh.
 
     **How it works:**
     1. Extracts JTI from current access token (from Authorization header)
-    2. Extracts JTI from provided refresh token (from request body)
+    2. Extracts JTI from provided refresh token (from cookie or body - dual support)
     3. Calculates remaining TTL for both tokens
     4. Adds both JTIs to Redis blocklist with appropriate TTL
-    5. Redis automatically removes expired tokens from blocklist
+    5. Clears the refresh_token HttpOnly cookie
+    6. Redis automatically removes expired tokens from blocklist
 
-    **Required:**
-    - refresh_token: The refresh token to revoke (from request body)
-    - Authorization header: Bearer token (access token) - automatically extracted
+    **Dual Support (backwards compatible):**
+    - Accepts refresh token from HttpOnly cookie (preferred)
+    - Also accepts refresh token from request body (for backwards compatibility)
+    - Cookie takes precedence if both are provided
+
+    **Request body (optional for backwards compatibility):**
+    ```json
+    {
+        "refresh_token": "eyJ..."  // Optional if cookie is present
+    }
+    ```
 
     **Security:**
     - User must be authenticated (valid access token required)
     - Both tokens are immediately invalidated
+    - HttpOnly cookie is cleared
     - Subsequent requests with these tokens will fail with 401 Unauthorized
-
-    **Example request:**
-    ```json
-    {
-        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-    }
-    ```
     """
     from datetime import datetime, timezone
 
@@ -208,8 +279,16 @@ async def logout(
     if not access_jti or not access_exp:
         raise InvalidTokenException('Invalid access token structure')
 
+    # DUAL SUPPORT: Try cookie first, fallback to body
+    refresh_token = request.cookies.get('refresh_token') or logout_data.refresh_token
+
+    if not refresh_token:
+        raise InvalidTokenException(
+            'Refresh token missing. Provide it via HttpOnly cookie or request body.'
+        )
+
     # Extract JTI from refresh token
-    refresh_payload = verify_refresh_token(logout_data.refresh_token)
+    refresh_payload = verify_refresh_token(refresh_token)
     refresh_jti = refresh_payload.get('jti')
     refresh_exp = refresh_payload.get('exp')
 
@@ -229,7 +308,15 @@ async def logout(
         refresh_ttl=refresh_ttl,
     )
 
-    return None
+    # Create response and clear cookie
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    response.delete_cookie(
+        key='refresh_token',
+        path='/api/v1/auth',
+        domain=settings.COOKIE_DOMAIN or None,
+    )
+
+    return response
 
 
 # ==================== Users Router ====================

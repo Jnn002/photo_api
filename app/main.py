@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.error_handlers import register_all_errors
 from app.core.invitation_redis import close_invitation_redis_connection
+from app.core.middleware import SecurityHeadersMiddleware
 from app.core.rate_limit_redis import close_rate_limit_redis, init_rate_limit_redis
 from app.core.redis import close_redis_connection
 from app.dashboard.router import router as dashboard_router
@@ -82,6 +83,10 @@ app.add_middleware(
     expose_headers=settings.CORS_EXPOSE_HEADERS,
     # expose_headers=settings.CORS_EXPOSE_HEADERS,
 )
+
+# Add Security Headers Middleware
+# Protects against common web vulnerabilities (XSS, clickjacking, etc.)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Register all exception handlers
 register_all_errors(app)

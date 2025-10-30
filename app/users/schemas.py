@@ -257,7 +257,7 @@ class UserLogin(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """Response schema for successful authentication."""
+    """Response schema for successful authentication (internal use with refresh_token in body)."""
 
     access_token: str
     refresh_token: str
@@ -266,7 +266,26 @@ class TokenResponse(BaseModel):
     user: UserPublic
 
 
+class TokenResponseWithCookie(BaseModel):
+    """
+    Response schema for authentication with HttpOnly cookie.
+
+    This schema is used when refresh tokens are sent via HttpOnly cookies
+    instead of in the response body. The refresh_token is set as a cookie
+    in the response headers, so it doesn't appear in the JSON body.
+    """
+
+    access_token: str
+    token_type: str = 'bearer'
+    expires_in: int  # seconds
+    user: UserPublic
+
+
 class LogoutRequest(BaseModel):
     """Schema for logout request."""
 
-    refresh_token: str = Field(..., min_length=1, description='Refresh token to revoke')
+    refresh_token: str | None = Field(
+        default=None,
+        min_length=1,
+        description='Refresh token to revoke (optional if using httpOnly cookie)',
+    )
