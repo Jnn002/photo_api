@@ -10,6 +10,7 @@ wheels/
 .venv
 
 #others
+test_rate_limit.py
 exd.md
 .vscode/mcp.json
 test_schemas.py

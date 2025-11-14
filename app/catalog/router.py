@@ -128,7 +128,7 @@ async def list_items(
         limit=limit,
         offset=offset,
         has_more=(offset + len(items)) < total,
-    )
+    )  # type: ignore
 
 
 @items_router.get(
@@ -632,7 +632,9 @@ async def list_rooms(
     **Permissions required:** room.view
     """
     service = RoomService(db)
-    rooms = await service.list_rooms(active_only=active_only, limit=limit, offset=offset)
+    rooms = await service.list_rooms(
+        active_only=active_only, limit=limit, offset=offset
+    )
     total = await service.count_rooms(active_only=active_only)
 
     return PaginatedResponse(

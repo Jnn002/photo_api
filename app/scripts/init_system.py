@@ -34,7 +34,6 @@ from app.users.models import Permission, Role, User, UserRole
 # ==================== Permission Definitions ====================
 
 PERMISSIONS = [
-    # Session Module
     {
         'code': 'session.create',
         'name': 'Create Session',
@@ -95,7 +94,6 @@ PERMISSIONS = [
         'module': 'session',
         'description': 'Mark session as ready for delivery (editor)',
     },
-    # Client Module
     {
         'code': 'client.create',
         'name': 'Create Client',
@@ -120,7 +118,6 @@ PERMISSIONS = [
         'module': 'client',
         'description': 'Delete clients (soft delete)',
     },
-    # Catalog Module - Items
     {
         'code': 'item.create',
         'name': 'Create Item',
@@ -139,7 +136,6 @@ PERMISSIONS = [
         'module': 'catalog',
         'description': 'Delete catalog items (soft delete)',
     },
-    # Catalog Module - Packages
     {
         'code': 'package.create',
         'name': 'Create Package',
@@ -158,7 +154,6 @@ PERMISSIONS = [
         'module': 'catalog',
         'description': 'Delete packages (soft delete)',
     },
-    # Catalog Module - Rooms
     {
         'code': 'room.create',
         'name': 'Create Room',

@@ -101,7 +101,7 @@ async def login(
         value=token_data.refresh_token,
         httponly=True,  # JavaScript cannot access
         secure=settings.SECURE_COOKIES,  # HTTPS only (if enabled)
-        samesite=settings.COOKIE_SAMESITE,  # CSRF protection
+        samesite=settings.COOKIE_SAMESITE,  # CSRF protection # type: ignore
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,  # 7 days
         path='/api/v1/auth',  # Limit cookie scope to auth endpoints
         domain=settings.COOKIE_DOMAIN or None,  # Domain for subdomain sharing
@@ -211,7 +211,7 @@ async def refresh_token(
         value=new_refresh_token,
         httponly=True,
         secure=settings.SECURE_COOKIES,
-        samesite=settings.COOKIE_SAMESITE,
+        samesite=settings.COOKIE_SAMESITE,  # type: ignore
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         path='/api/v1/auth',
         domain=settings.COOKIE_DOMAIN or None,
@@ -520,7 +520,9 @@ async def register_user(
     if user_role:
         # Create UserRole link directly to avoid lazy-load issues
         user_role_link = UserRole(
-            user_id=user.id, role_id=user_role.id, assigned_by=None
+            user_id=user.id,  # type: ignore
+            role_id=user_role.id,  # type: ignore
+            assigned_by=None,  # type: ignore
         )
         db.add(user_role_link)
         await db.commit()

@@ -11,7 +11,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, status
 
-from app.core.dependencies import CurrentActiveUser, SessionDep
+from app.core.dependencies import SessionDep
 from app.core.permissions import require_permission
 from app.invitations.schemas import (
     InvitationCreate,

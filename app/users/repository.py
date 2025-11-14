@@ -313,7 +313,9 @@ class UserRepository:
         result = await self.db.exec(statement)
         return list(result.all())
 
-    async def list_all_with_roles(self, limit: int = 100, offset: int = 0) -> list[User]:
+    async def list_all_with_roles(
+        self, limit: int = 100, offset: int = 0
+    ) -> list[User]:
         """List all users with roles eagerly loaded."""
         statement = (
             select(User)
